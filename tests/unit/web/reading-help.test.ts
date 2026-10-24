@@ -216,8 +216,52 @@ describe("reading help in the mock", () => {
     expect(view.imageUrl).toBeNull();
     expect(view.excerpts).toEqual([
       { key: "strength", textExcerpt: null, crop: null },
-      { key: "dosageForm", textExcerpt: "tablet", crop: null },
+      { key: "dosageForm", textExcerpt: "[smudged] tablet", crop: null },
     ]);
+  });
+
+  it("never gives the volunteer the extracted value as typed text", async () => {
+    const client = mock();
+    const { case: c } = await client.createCase({
+      kind: "text",
+      text: findSample("clear")!.text,
+    });
+    const { data: r } = await client.createReview(c.id, {
+      expectedRevision: 0,
+      selectedFields: ["strength"],
+      consent: true,
+    });
+    const { data: view } = await client.claimReview(r.id);
+    // The typed line, not the extracted "0.5 mg".
+    expect(view.excerpts[0].textExcerpt).toBe("0.5 mg tablet");
+  });
+
+  it("rejects confirming a field in the same change that applies a reading", async () => {
+    const { client, c } = await unreadableCase();
+    const { data: r } = await client.createReview(c.id, {
+      expectedRevision: 0,
+      selectedFields: ["strength"],
+      consent: true,
+    });
+    await client.claimReview(r.id);
+    await client.respondToReview(r.id, {
+      expectedRevision: 0,
+      outcome: "submitted",
+      proposals: [{ key: "strength", visibleText: "0.5 mg", evidence: "x" }],
+    });
+    await expect(
+      client.updateFields(c.id, {
+        expectedRevision: 0,
+        changes: [
+          {
+            key: "strength",
+            value: "0.5 mg",
+            reviewState: "user_confirmed",
+            fromReviewId: r.id,
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 });
 
@@ -301,5 +345,49 @@ describe("HTTP client personas", () => {
     await expect(client.listReviewQueue()).rejects.toMatchObject({
       code: "NOT_IMPLEMENTED",
     });
+  });
+});
+
+describe("HTTP client role serialization", () => {
+  it("never lets an overlapping call switch the role between check and request", async () => {
+    const calls: string[] = [];
+    let role = "";
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const respond = (data: unknown) =>
+      new Response(
+        JSON.stringify({
+          contractVersion: "1",
+          requestId: "r",
+          dataMode: "fixture",
+          data,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    const client = createHttpClient((async (
+      url: string,
+      init?: RequestInit,
+    ) => {
+      if (url === "/api/session") {
+        role = JSON.parse(String(init!.body)).role;
+        calls.push(`session:${role}`);
+        return respond({ role });
+      }
+      calls.push(`${url} as ${role}`);
+      if (url === "/api/cases/c/reviews") await gate; // slow patient request
+      return respond([]);
+    }) as unknown as typeof fetch);
+
+    const patientCall = client.listCaseReviews("c");
+    const reviewerCall = client.listReviewQueue();
+    await new Promise((r) => setTimeout(r, 10));
+    release();
+    await Promise.all([patientCall, reviewerCall]);
+    expect(calls).toEqual([
+      "session:patient",
+      "/api/cases/c/reviews as patient",
+      "session:reviewer",
+      "/api/reviews as reviewer",
+    ]);
   });
 });

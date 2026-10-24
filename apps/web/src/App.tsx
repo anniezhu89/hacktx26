@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { healthResponse } from "@labelbridge/contracts";
 import { api } from "./api";
 import type { Role } from "./api/client";
@@ -57,6 +57,12 @@ export function App() {
   const [largeText, setLargeText] = useState(readLargeText);
   const [intakeMode, setIntakeMode] = useState<IntakeMode>("sample");
   const [persona, setPersona] = useState<Role>("patient");
+  const focusedCase = useRef<string | null>(null);
+  const focusOnce = useCallback((caseId: string) => {
+    if (focusedCase.current === caseId) return false;
+    focusedCase.current = caseId;
+    return true;
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("large-text", largeText);
@@ -114,6 +120,7 @@ export function App() {
           <VolunteerPane />
         ) : session.result ? (
           <Review
+            focusOnce={focusOnce}
             api={api}
             session={session}
             result={session.result}

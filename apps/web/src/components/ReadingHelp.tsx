@@ -277,6 +277,14 @@ export function ReadingHelp({
                     {r.status === "needs_new_image" && (
                       <button type="button" onClick={onUploadClearer}>
                         Upload a clearer image
+                        <span className="sr-only">
+                          {" "}
+                          (volunteer request for{" "}
+                          {r.selectedFields
+                            .map((k) => FIELD_LABELS[k])
+                            .join(", ")}
+                          )
+                        </span>
                       </button>
                     )}
                     {r.status === "submitted" && (

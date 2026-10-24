@@ -40,7 +40,9 @@ export function Review({
   result,
   source,
   onUploadClearer,
+  focusOnce,
 }: {
+  focusOnce: (caseId: string) => boolean;
   api: ApiClient;
   session: CaseSession;
   result: CaseResult;
@@ -50,7 +52,11 @@ export function Review({
   const heading = useRef<HTMLHeadingElement>(null);
   const c = result.case;
   const help = usePatientReviews(api, c.id);
-  useEffect(() => heading.current?.focus(), [c.id]);
+  // Focus once per new case; returning from the volunteer view must not move
+  // focus, because that change comes from a radio button.
+  useEffect(() => {
+    if (focusOnce(c.id)) heading.current?.focus();
+  }, [c.id, focusOnce]);
 
   const fields = FIELD_ORDER.map((k) => c.fields.find((f) => f.key === k)!);
   const progress = reviewProgress(fields);

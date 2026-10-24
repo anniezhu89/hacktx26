@@ -31,7 +31,10 @@ function ReadingForm({
   const entry = (key: FieldKey): Entry =>
     entries[key] ?? { text: "", unreadable: false };
   const update = (key: FieldKey, patch: Partial<Entry>) =>
-    setEntries((e) => ({ ...e, [key]: { ...entry(key), ...patch } }));
+    setEntries((e) => ({
+      ...e,
+      [key]: { ...(e[key] ?? { text: "", unreadable: false }), ...patch },
+    }));
 
   function source(key: FieldKey) {
     const ex = view.excerpts.find((e) => e.key === key)!;
@@ -59,11 +62,14 @@ function ReadingForm({
         return {
           key,
           visibleText: e.unreadable ? null : e.text.trim(),
-          evidence:
-            note.trim() ||
-            (e.unreadable
+          evidence: [
+            e.unreadable
               ? "The volunteer could not read this part."
-              : `Read from ${source(key)}.`),
+              : `Read from ${source(key)}.`,
+            note.trim() && `Note: ${note.trim()}`,
+          ]
+            .filter(Boolean)
+            .join(" "),
         };
       }),
     });
@@ -186,16 +192,16 @@ function ReadingForm({
 }
 
 export function VolunteerView({ queue }: { queue: ReviewerQueue }) {
-  const heading = useRef<HTMLHeadingElement>(null);
-  useEffect(() => heading.current?.focus(), []);
-  const unavailable = queue.error && isUnavailable(queue.error.error);
+  // Only a failed queue load means the server lacks these routes; a missing
+  // request during a claim is an ordinary error.
+  const unavailable =
+    queue.error?.op === "load" && isUnavailable(queue.error.error);
   const busy = queue.pending !== null;
 
+  // Focus is not moved on mount: choosing the view radio must not move focus.
   return (
     <section aria-labelledby="volunteer-heading" className="stack">
-      <h2 id="volunteer-heading" tabIndex={-1} ref={heading}>
-        Volunteer reading requests
-      </h2>
+      <h2 id="volunteer-heading">Volunteer reading requests</h2>
       <div className="banner banner-blocked">
         <p>
           <strong>Type only what you can see.</strong> If you cannot read a

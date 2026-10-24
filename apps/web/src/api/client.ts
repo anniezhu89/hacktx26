@@ -192,19 +192,28 @@ export function createHttpClient(fetchImpl: Fetch = fetch): ApiClient {
       });
     return session;
   };
+  // One shared cookie carries the role, so a role check and the request it
+  // guards run one at a time: an overlapping call for another persona must
+  // not switch the cookie between them.
+  let queue: Promise<unknown> = Promise.resolve();
   // A 401 means the server forgot the session (e.g. it restarted): start a
   // new one and retry once. The case itself may then be gone (404).
-  const withSession = async <T>(role: Role, call: () => Promise<T>) => {
-    const current = await (session ?? startSession(role));
-    if (current !== role) await startSession(role);
-    try {
-      return await call();
-    } catch (error) {
-      if (!(error instanceof ApiError) || error.code !== "UNAUTHORIZED")
-        throw error;
-      await startSession(role);
-      return call();
-    }
+  const withSession = <T>(role: Role, call: () => Promise<T>) => {
+    const run = async () => {
+      const current = await (session ?? startSession(role));
+      if (current !== role) await startSession(role);
+      try {
+        return await call();
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.code !== "UNAUTHORIZED")
+          throw error;
+        await startSession(role);
+        return call();
+      }
+    };
+    const next = queue.then(run, run);
+    queue = next.catch(() => undefined);
+    return next;
   };
   const patient = <T>(call: () => Promise<T>) => withSession("patient", call);
   const reviewer = <T>(call: () => Promise<T>) => withSession("reviewer", call);

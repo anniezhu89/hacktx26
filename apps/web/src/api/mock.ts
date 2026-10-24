@@ -105,7 +105,10 @@ export function createMockClient({
   const store = new Map<string, Case>();
   const reviews = new Map<string, ReviewRequest>();
   // What the patient submitted, kept to build reviewer excerpts.
-  const intake = new Map<string, { imageSrc: string | null; text: boolean }>();
+  const intake = new Map<
+    string,
+    { imageSrc: string | null; text: string | null }
+  >();
   let pendingFailure: ErrorCode | null = null;
 
   async function respond<T>(
@@ -146,6 +149,9 @@ export function createMockClient({
     if (!found) throw mockError("NOT_FOUND");
     if (now() >= new Date(found.expiresAt)) {
       store.delete(id);
+      const src = intake.get(id)?.imageSrc;
+      if (src?.startsWith("blob:")) URL.revokeObjectURL(src);
+      intake.delete(id);
       for (const [rid, r] of reviews) if (r.caseId === id) reviews.delete(rid);
       throw mockError("EXPIRED");
     }
@@ -166,6 +172,12 @@ export function createMockClient({
       throw mockError("BAD_REQUEST", "Invalid field change.");
     for (const change of parsed.data.changes) {
       if (!change.fromReviewId) continue;
+      // A volunteer reading is a proposal: applying it never confirms it.
+      if (change.reviewState === "user_confirmed")
+        throw mockError(
+          "BAD_REQUEST",
+          "A volunteer reading must be confirmed separately by the patient.",
+        );
       const r = reviews.get(change.fromReviewId);
       const proposal = r?.proposals.find((p) => p.key === change.key);
       if (
@@ -238,7 +250,10 @@ export function createMockClient({
           tasks: [],
         });
         store.set(next.id, next);
-        intake.set(next.id, { imageSrc, text: source.kind === "text" });
+        intake.set(next.id, {
+          imageSrc,
+          text: source.kind === "text" ? source.text : null,
+        });
         return next;
       });
     },
@@ -372,18 +387,29 @@ export function createMockClient({
     },
   };
 
+  function typedLines(text: string | null, rawText: string | null) {
+    if (!text || !rawText) return null;
+    // First matching line only, so other parts of the label are not shared.
+    const line = text
+      .split("\n")
+      .map((l) => l.trim())
+      .find((l) => l.includes(rawText));
+    return line ?? null;
+  }
+
   function viewOf(r: ReviewRequest) {
     const c = store.get(r.caseId)!;
     const source = intake.get(r.caseId);
     return {
       review: r,
-      // Label evidence only: never values or rawText. For text intake the
-      // evidence is a verbatim line the patient typed.
+      // Label evidence only: never values, rawText or extraction evidence.
+      // For text intake, the excerpt is the line(s) the patient actually
+      // typed that contain the field, never the extracted substring.
       excerpts: r.selectedFields.map((key) => {
         const f = c.fields.find((x) => x.key === key)!;
         return {
           key,
-          textExcerpt: source?.text && f.rawText !== null ? f.evidence : null,
+          textExcerpt: typedLines(source?.text ?? null, f.rawText),
           crop: source?.imageSrc ? f.crop : null,
         };
       }),
