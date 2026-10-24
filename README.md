@@ -28,7 +28,7 @@ npm run commit:verified -- "Describe your increment"
 npm run verify:sha -- HEAD
 ```
 
-`check`: format, lint, types, six fixture validations, unit/API tests, production build. `smoke`: real Chromium frontend/API checks over production serving and development proxy. Build before smoke. Chromium must be installed once per machine. No retries hide failures. Clean verification runs `npm ci`, `check`, `smoke` in a new detached worktree; ignored credentials are not copied. Reports are `.verification/<SHA>.json`; failed trees remain for diagnosis. Independent review is still required.
+`check`: format, lint, types, six fixture validations, unit/API tests, production build. `smoke`: real Chromium frontend/API checks over production serving and development proxy. Build before smoke. Chromium must be installed once per machine. No retries hide failures. Clean verification runs `npm ci`, `check`, `smoke` in a new detached worktree; ignored credentials are not copied. Reports are `.verification/<SHA>.json`; verification trees remain for evidence and diagnosis. Independent review is still required.
 
 On this machine a checksum-verified portable Node is under ignored `.tools/node-v24.22.1-win-x64`. In PowerShell, enable it for your session:
 

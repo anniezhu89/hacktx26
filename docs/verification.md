@@ -25,3 +25,6 @@ Do not advance a failing commit. Every integration merge requires clean-SHA chec
 - Corrective change: `.gitattributes` requires LF for text files across clean checkouts. Post-commit hook is also marked executable for POSIX hosts. No check was removed or weakened.
 - Author checks before initial commit passed format, lint, type checks, six fixture validations, eight unit/API tests and production build. Earlier browser run passed both foundation smoke tests. Those results did not override the clean-SHA failure.
 - Corrective-SHA outcomes are recorded by the verifier in `.verification/<SHA>.json` and supplied with the handoff. Product journey and independent-review gaps above remain pending.
+
+- SHA `6d6bf9cfba175f7e65a259038b64059d3dfda23d`: clean `npm ci`, full `check` (eight tests) and both browser smoke tests passed. The wrapper then exited 1 during `git worktree remove` because Windows left the directory nonempty. Its PASS report covered checks but did not cover this cleanup error; do not treat the wrapper invocation as successful.
+- Further corrective change retains all isolated verification trees and records their exact paths, avoiding automatic evidence deletion and Windows cleanup failures. The final verifier invocation must exit 0 before handoff; both implementer worktrees will be fast-forwarded to that final SHA while still unused.

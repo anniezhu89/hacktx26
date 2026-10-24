@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { run } from "./process.mjs";
@@ -13,6 +13,7 @@ export function verify(ref = "HEAD") {
   const report = {
     sha,
     mode: "fixture",
+    worktree: directory,
     startedAt: new Date().toISOString(),
     result: "FAILED",
     commands: [],
@@ -44,8 +45,7 @@ export function verify(ref = "HEAD") {
     console.log(
       `Committed SHA ${sha}: ${report.result}. Report: .verification/${sha}.json`,
     );
-    if (report.result === "PASS" && existsSync(directory))
-      run("git", ["worktree", "remove", directory], root);
+    console.log(`Verification worktree retained for evidence: ${directory}`);
   }
   return sha;
 }
