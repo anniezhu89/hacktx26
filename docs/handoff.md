@@ -44,3 +44,9 @@ Backend implementer, please implement with B5:
 - `PATCH /api/cases/:id/tasks/:taskId` (patient, or supporter when the case is shared): `applyTaskAction` → `taskActionResponse` (task plus caseRevision only, so a supporter never receives the full case). Map thrown errors: REVISION_CONFLICT/STATE_CONFLICT → 409, FORBIDDEN → 403, NOT_FOUND → 404. Ownership is checked by demo role (one person per role per workspace), which also avoids the actorId-per-switch problem.
 - `fieldsRevision`: `applyFieldChanges` sets it; task, plan and sharing changes keep it. `buildExplanation` should report `fieldRevision: fieldsRevisionOf(case)` instead of `case.revision`, otherwise an explanation looks stale after a task is claimed.
 - `applyFieldChanges` now drops proposed tasks (suggestions made for old fields) and keeps accepted or completed ones.
+
+v1.2 review follow-ups (contract helpers updated):
+
+- `sharedView` shares only confirmed values (unconfirmed shared fields show `value: null`) and redacts unshared or unconfirmed values from task descriptions. Planner prompts should still avoid quoting field values in task text.
+- `applyTaskAction`: the patient may release a supporter-owned task once sharing is off, so it is not stranded.
+- Please stub `PATCH /api/cases/:id/sharing` and `GET /api/shared` as NOT_IMPLEMENTED until built; today they fall through to NOT_FOUND, which the frontend has to probe to tell apart from a missing case.

@@ -421,6 +421,30 @@ export const fieldsRevisionOf = (c: Case) => c.fieldsRevision ?? c.revision;
 /** The supporter's view: only permitted fields, never evidence or crops. */
 export function sharedView(c: Case): SharedCase | null {
   if (!c.sharing.supporter) return null;
+  // Values the supporter may not see: unshared fields, and shared fields the
+  // patient has not confirmed (unconfirmed automatic readings stay private).
+  const hidden = c.fields
+    .filter(
+      (f) =>
+        !c.sharing.fieldKeys.includes(f.key) ||
+        f.reviewState !== "user_confirmed",
+    )
+    .flatMap((f) => [f.value, f.rawText])
+    .filter((v): v is string => !!v && v.trim().length >= 2);
+  // Task text is free text (possibly AI-written): redact hidden values.
+  const redact = (text: string) =>
+    hidden.reduce(
+      (t, v) =>
+        t.replace(
+          // Whole-word match, so "30" does not hit "300".
+          new RegExp(
+            `(?<![\\w.])${v.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w])`,
+            "gi",
+          ),
+          "[not shared]",
+        ),
+      text,
+    );
   return sharedCase.parse({
     caseId: c.id,
     revision: c.revision,
@@ -428,8 +452,12 @@ export function sharedView(c: Case): SharedCase | null {
     fictionalData: true,
     fields: c.fields
       .filter((f) => c.sharing.fieldKeys.includes(f.key))
-      .map((f) => ({ key: f.key, value: f.value, reviewState: f.reviewState })),
-    tasks: c.tasks,
+      .map((f) => ({
+        key: f.key,
+        value: f.reviewState === "user_confirmed" ? f.value : null,
+        reviewState: f.reviewState,
+      })),
+    tasks: c.tasks.map((t) => ({ ...t, description: redact(t.description) })),
   });
 }
 
@@ -491,7 +519,16 @@ export function applyTaskAction(
   assertRevision(current.revision, parsed.expectedRevision);
   const existing = current.tasks.find((t) => t.id === taskId);
   if (!existing) throw new Error("NOT_FOUND");
+  // Ownership is by demo role (one person per role per synthetic workspace);
+  // actor.id is recorded as owner but not compared, because demo sessions may
+  // issue a new actor id when switching persona.
   const mine = existing.ownerRole === actor.role;
+  // When sharing is off the supporter cannot reach the task, so the patient
+  // may hand it back rather than leave it stranded.
+  const strandedSupporterTask =
+    actor.role === "patient" &&
+    existing.ownerRole === "supporter" &&
+    !current.sharing.supporter;
   let updated: Task;
   if (parsed.action === "claim") {
     if (existing.status !== "proposed") throw new Error("STATE_CONFLICT");
@@ -504,7 +541,8 @@ export function applyTaskAction(
     };
   } else {
     if (existing.status === "proposed") throw new Error("STATE_CONFLICT");
-    if (!mine) throw new Error("FORBIDDEN");
+    if (!mine && !(parsed.action === "release" && strandedSupporterTask))
+      throw new Error("FORBIDDEN");
     if (existing.status === "completed") throw new Error("STATE_CONFLICT");
     updated =
       parsed.action === "complete"
