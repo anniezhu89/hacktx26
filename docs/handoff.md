@@ -50,3 +50,4 @@ v1.2 review follow-ups (contract helpers updated):
 - `sharedView` shares only confirmed values (unconfirmed shared fields show `value: null`) and redacts unshared or unconfirmed values from task descriptions. Planner prompts should still avoid quoting field values in task text.
 - `applyTaskAction`: the patient may release a supporter-owned task once sharing is off, so it is not stranded.
 - Please stub `PATCH /api/cases/:id/sharing` and `GET /api/shared` as NOT_IMPLEMENTED until built; today they fall through to NOT_FOUND, which the frontend has to probe to tell apart from a missing case.
+- Redaction in `sharedView` is a guardrail, not a guarantee: it matches exact values (case-insensitive, whole-word, single digits included) and misses paraphrases or spacing variants such as "0.5mg" for "0.5 mg". Task text should never quote label values in the first place.

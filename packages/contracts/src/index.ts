@@ -430,7 +430,10 @@ export function sharedView(c: Case): SharedCase | null {
         f.reviewState !== "user_confirmed",
     )
     .flatMap((f) => [f.value, f.rawText])
-    .filter((v): v is string => !!v && v.trim().length >= 2);
+    .filter(
+      (v): v is string =>
+        !!v && (v.trim().length >= 2 || /^\d$/.test(v.trim())),
+    );
   // Task text is free text (possibly AI-written): redact hidden values.
   const redact = (text: string) =>
     hidden.reduce(

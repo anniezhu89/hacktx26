@@ -248,6 +248,19 @@ describe("contract v1.2 review fixes", () => {
       { ...proposal("n"), description: "Compare a 300 count" },
     ]);
     expect(sharedView(c300)!.tasks[0].description).toBe("Compare a 300 count");
+    const five = caseSchema.parse(fixture("clear"));
+    five.fields.find((f) => f.key === "quantity")!.value = "5";
+    const c5 = applyPlanTasks(
+      applySharing(five, {
+        expectedRevision: 0,
+        supporter: true,
+        fieldKeys: [],
+      }),
+      [{ ...proposal("p"), description: "Pick up 5 tablets" }],
+    );
+    expect(sharedView(c5)!.tasks[0].description).toBe(
+      "Pick up [not shared] tablets",
+    );
   });
 
   it("lets the patient release a supporter's task once sharing is off, not before", () => {
