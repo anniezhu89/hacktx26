@@ -31,3 +31,16 @@ Backend implementer, please implement with B3:
 - `GET /api/reviews/:id/image` (claimer only) serves the stored image; `imageUrl` must be that exact path or null.
 - `PATCH /fields` changes may carry `fromReviewId`. `applyFieldChanges` then records provenance `volunteer`; the server must first check that the review belongs to the case, is `submitted`, and proposed exactly that value for that key, else 409/400. It never auto-confirms.
 - Extraction fixes requested earlier: a medication name on its own line, dosage form taken from the name line, and "Use as directed." should stay unresolved with a question (see `fixtures/ambiguous.json`).
+
+## Contract v1.2 (additive, for F4 / B5)
+
+`@labelbridge/contracts` 1.2.0. Wire `contractVersion` stays `"1"`. Fixture added: `shared-case.json`. The shared helpers `applySharing`, `applyPlanTasks`, `applyTaskAction`, `sharedView` and `fieldsRevisionOf` encode the rules; please use them, as with `applyFieldChanges`.
+
+Backend implementer, please implement with B5:
+
+- `PATCH /api/cases/:id/sharing` (patient): `sharingRequest` → `caseResponse` via `applySharing`. Turning sharing off clears field keys; later supporter requests must lose access immediately.
+- `GET /api/shared` (supporter, same demo workspace): `sharedCasesResponse` built with `sharedView` (permitted values and review states only, plus tasks; no evidence, crops or raw text).
+- `POST /api/cases/:id/plan` (patient): deterministic or AI suggestions passed through `applyPlanTasks`, which replaces earlier suggestions and keeps accepted or completed tasks untouched. Return `planResponse` with `fieldRevision = fieldsRevisionOf(case)`. Practical tasks only, never treatment advice.
+- `PATCH /api/cases/:id/tasks/:taskId` (patient, or supporter when the case is shared): `applyTaskAction` → `taskActionResponse` (task plus caseRevision only, so a supporter never receives the full case). Map thrown errors: REVISION_CONFLICT/STATE_CONFLICT → 409, FORBIDDEN → 403, NOT_FOUND → 404. Ownership is checked by demo role (one person per role per workspace), which also avoids the actorId-per-switch problem.
+- `fieldsRevision`: `applyFieldChanges` sets it; task, plan and sharing changes keep it. `buildExplanation` should report `fieldRevision: fieldsRevisionOf(case)` instead of `case.revision`, otherwise an explanation looks stale after a task is claimed.
+- `applyFieldChanges` now drops proposed tasks (suggestions made for old fields) and keeps accepted or completed ones.

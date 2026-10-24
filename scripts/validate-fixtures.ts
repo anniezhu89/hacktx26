@@ -5,6 +5,7 @@ import {
   savingsOption,
   reviewRequest,
   reviewerView,
+  sharedCase,
   planResponse,
   eligibleForExplanation,
 } from "../packages/contracts/src/index";
@@ -17,8 +18,9 @@ savingsOption.parse(read("savings"));
 for (const name of ["review", "review-submitted"])
   reviewRequest.parse(read(name));
 reviewerView.parse(read("reviewer-view"));
+sharedCase.parse(read("shared-case"));
 planResponse.parse(read("plan"));
 for (const name of ["unreadable", "ambiguous"])
   if (eligibleForExplanation(caseSchema.parse(read(name)).fields))
     throw new Error(`${name} fixture must block explanation`);
-console.log("All nine synthetic contract fixtures validated.");
+console.log("All ten synthetic contract fixtures validated.");

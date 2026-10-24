@@ -1,0 +1,33 @@
+{
+  "caseId": "synthetic-clear",
+  "revision": 6,
+  "expiresAt": "2026-10-24T13:00:00.000Z",
+  "fictionalData": true,
+  "fields": [
+    {
+      "key": "medicationName",
+      "value": "Fictional Demo Tablet",
+      "reviewState": "user_confirmed"
+    },
+    { "key": "quantity", "value": "30", "reviewState": "user_confirmed" }
+  ],
+  "tasks": [
+    {
+      "id": "synthetic-task",
+      "category": "call_pharmacy",
+      "description": "Prepare questions for a pharmacist",
+      "owner": "synthetic-supporter",
+      "ownerRole": "supporter",
+      "status": "accepted",
+      "acceptedAt": "2026-10-24T12:30:00.000Z"
+    },
+    {
+      "id": "synthetic-ride",
+      "category": "transport",
+      "description": "Arrange a ride to pick up the medication",
+      "owner": null,
+      "status": "proposed",
+      "acceptedAt": null
+    }
+  ]
+}

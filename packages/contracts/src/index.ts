@@ -48,6 +48,9 @@ export const task = z
     ]),
     description: z.string().min(1),
     owner: id.nullable(),
+    // v1.2: which demo persona accepted the task (one person per role per
+    // synthetic workspace). Absent or null while proposed.
+    ownerRole: z.enum(["patient", "supporter"]).nullable().optional(),
     status: z.enum(["proposed", "accepted", "completed"]),
     acceptedAt: timestamp.nullable(),
   })
@@ -55,7 +58,7 @@ export const task = z
   .refine(
     (t) =>
       t.status === "proposed"
-        ? t.owner === null && t.acceptedAt === null
+        ? t.owner === null && t.acceptedAt === null && !t.ownerRole
         : t.owner !== null && t.acceptedAt !== null,
     "Task acceptance requires explicit owner and timestamp",
   );
@@ -63,6 +66,11 @@ export const caseSchema = z
   .object({
     id,
     revision: z.number().int().nonnegative(),
+    // v1.2: the revision at which label fields last changed. Task, plan and
+    // sharing changes bump `revision` but not this, so explanations and
+    // savings (whose fieldRevision refers to it) stay valid. Absent means
+    // equal to `revision`.
+    fieldsRevision: z.number().int().nonnegative().optional(),
     createdAt: timestamp,
     expiresAt: timestamp,
     fictionalData: z.literal(true),
@@ -314,6 +322,37 @@ export const planResponse = envelope(
 export const deletionResponse = envelope(
   z.object({ deleted: z.literal(true) }).strict(),
 );
+// v1.2 shared support (additive; wire contractVersion stays "1"):
+//   PATCH /api/cases/:id/sharing         patient   sharingRequest → caseResponse
+//   GET   /api/shared                    supporter → sharedCasesResponse
+//   POST  /api/cases/:id/plan            patient   planRequest → planResponse
+//   PATCH /api/cases/:id/tasks/:taskId   patient or supporter (case must be
+//         shared for the supporter) taskRequest → taskActionResponse
+export const sharingRequest = expectedRevision.extend({
+  supporter: z.boolean(),
+  fieldKeys: z
+    .array(fieldKey)
+    .refine((k) => new Set(k).size === k.length, "Duplicate field"),
+});
+// What a supporter may see: permitted field values and review states only
+// (no evidence, crops or raw text), plus the practical task list.
+export const sharedField = z
+  .object({ key: fieldKey, value: z.string().nullable(), reviewState })
+  .strict();
+export const sharedCase = z
+  .object({
+    caseId: id,
+    revision: z.number().int().nonnegative(),
+    expiresAt: timestamp,
+    fictionalData: z.literal(true),
+    fields: z.array(sharedField),
+    tasks: z.array(task),
+  })
+  .strict();
+export const sharedCasesResponse = envelope(z.array(sharedCase));
+export const taskActionResponse = envelope(
+  z.object({ task, caseRevision: z.number().int().nonnegative() }).strict(),
+);
 export const sessionResponse = envelope(
   z.object({ role: z.enum(["patient", "supporter", "reviewer"]) }).strict(),
 );
@@ -361,11 +400,127 @@ export function applyFieldChanges(
   const next = caseSchema.parse({
     ...current,
     revision: current.revision + 1,
+    fieldsRevision: current.revision + 1,
     fields,
     status: eligibleForExplanation(fields) ? "ready" : "reviewing",
+    // Suggestions were made for the old fields; commitments are kept.
+    tasks: current.tasks.filter((t) => t.status !== "proposed"),
   });
   return {
     case: next,
     invalidate: ["explanation", "savings", "plan"] as const,
   };
+}
+
+export type Task = z.infer<typeof task>;
+export type SharedCase = z.infer<typeof sharedCase>;
+export type DemoActor = { id: string; role: "patient" | "supporter" };
+
+export const fieldsRevisionOf = (c: Case) => c.fieldsRevision ?? c.revision;
+
+/** The supporter's view: only permitted fields, never evidence or crops. */
+export function sharedView(c: Case): SharedCase | null {
+  if (!c.sharing.supporter) return null;
+  return sharedCase.parse({
+    caseId: c.id,
+    revision: c.revision,
+    expiresAt: c.expiresAt,
+    fictionalData: true,
+    fields: c.fields
+      .filter((f) => c.sharing.fieldKeys.includes(f.key))
+      .map((f) => ({ key: f.key, value: f.value, reviewState: f.reviewState })),
+    tasks: c.tasks,
+  });
+}
+
+const bump = (current: Case, patch: Partial<Case>) =>
+  caseSchema.parse({
+    ...current,
+    ...patch,
+    revision: current.revision + 1,
+    fieldsRevision: fieldsRevisionOf(current),
+  });
+
+export function applySharing(
+  current: Case,
+  input: z.infer<typeof sharingRequest>,
+) {
+  const parsed = sharingRequest.parse(input);
+  assertRevision(current.revision, parsed.expectedRevision);
+  return bump(current, {
+    sharing: {
+      supporter: parsed.supporter,
+      fieldKeys: parsed.supporter ? parsed.fieldKeys : [],
+    },
+  });
+}
+
+/**
+ * Replace earlier suggestions with new ones while keeping every accepted or
+ * completed task exactly as it was: changing availability never cancels a
+ * commitment.
+ */
+export function applyPlanTasks(current: Case, proposals: Task[]) {
+  const kept = current.tasks.filter((t) => t.status !== "proposed");
+  const fresh = proposals.map((t) =>
+    task.parse({
+      ...t,
+      owner: null,
+      ownerRole: null,
+      acceptedAt: null,
+      status: "proposed",
+    }),
+  );
+  const ids = [...kept, ...fresh].map((t) => t.id);
+  if (new Set(ids).size !== ids.length) throw new Error("BAD_REQUEST");
+  return bump(current, { tasks: [...kept, ...fresh] });
+}
+
+/**
+ * Claim, complete or release a task. Throws REVISION_CONFLICT, NOT_FOUND,
+ * STATE_CONFLICT (e.g. already claimed) or FORBIDDEN (not the owner).
+ */
+export function applyTaskAction(
+  current: Case,
+  taskId: string,
+  input: z.infer<typeof taskRequest>,
+  actor: DemoActor,
+  now: string,
+) {
+  const parsed = taskRequest.parse(input);
+  assertRevision(current.revision, parsed.expectedRevision);
+  const existing = current.tasks.find((t) => t.id === taskId);
+  if (!existing) throw new Error("NOT_FOUND");
+  const mine = existing.ownerRole === actor.role;
+  let updated: Task;
+  if (parsed.action === "claim") {
+    if (existing.status !== "proposed") throw new Error("STATE_CONFLICT");
+    updated = {
+      ...existing,
+      status: "accepted",
+      owner: actor.id,
+      ownerRole: actor.role,
+      acceptedAt: now,
+    };
+  } else {
+    if (existing.status === "proposed") throw new Error("STATE_CONFLICT");
+    if (!mine) throw new Error("FORBIDDEN");
+    if (existing.status === "completed") throw new Error("STATE_CONFLICT");
+    updated =
+      parsed.action === "complete"
+        ? { ...existing, status: "completed" }
+        : {
+            ...existing,
+            status: "proposed",
+            owner: null,
+            ownerRole: null,
+            acceptedAt: null,
+          };
+  }
+  const next = bump(current, {
+    tasks: current.tasks.map((t) =>
+      t.id === taskId ? task.parse(updated) : t,
+    ),
+  });
+  return { case: next, task: next.tasks.find((t) => t.id === taskId)! };
 }
