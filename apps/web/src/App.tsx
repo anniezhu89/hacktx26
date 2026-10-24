@@ -4,9 +4,11 @@ import { api } from "./api";
 import type { Role } from "./api/client";
 import { Intake, type IntakeMode } from "./components/Intake";
 import { Review } from "./components/Review";
+import { SupporterView } from "./components/SupporterView";
 import { VolunteerView } from "./components/VolunteerView";
 import { useCaseSession } from "./state/useCaseSession";
 import { useReviewerQueue } from "./state/useReviews";
+import { useSupporterView } from "./state/useSupporterView";
 
 const LARGE_TEXT_KEY = "labelbridge.largeText";
 
@@ -45,6 +47,10 @@ function HealthCheck() {
       <p role="status">{status}</p>
     </div>
   );
+}
+
+function SupporterPane() {
+  return <SupporterView view={useSupporterView(api)} />;
 }
 
 // Mounted only in the volunteer view, so the queue loads when it is opened.
@@ -101,6 +107,7 @@ export function App() {
             {(
               [
                 ["patient", "Patient"],
+                ["supporter", "Supporter"],
                 ["reviewer", "Volunteer reader"],
               ] as const
             ).map(([id, label]) => (
@@ -113,6 +120,9 @@ export function App() {
                   onChange={() => {
                     setPersona(id);
                     setAnnouncement(`Showing the ${label.toLowerCase()} view.`);
+                    // Other personas may have changed tasks or reviews.
+                    if (id === "patient" && session.result)
+                      void session.reload();
                   }}
                 />
                 {label}
@@ -125,6 +135,8 @@ export function App() {
         </p>
         {persona === "reviewer" ? (
           <VolunteerPane />
+        ) : persona === "supporter" ? (
+          <SupporterPane />
         ) : session.result ? (
           <Review
             focusOnce={focusOnce}

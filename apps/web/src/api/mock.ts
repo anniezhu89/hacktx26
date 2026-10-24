@@ -16,6 +16,17 @@ import {
   savingsOption,
   savingsRequest,
   savingsResponse,
+  applyPlanTasks,
+  applySharing,
+  applyTaskAction,
+  fieldsRevisionOf,
+  planRequest,
+  planResponse,
+  sharedCasesResponse,
+  sharedView,
+  sharingRequest,
+  taskActionResponse,
+  type Task,
   type Case,
   type ReviewRequest,
 } from "@labelbridge/contracts";
@@ -90,6 +101,104 @@ function unextractedFields(): Case["fields"] {
 }
 
 const OPEN = new Set<ReviewRequest["status"]>(["pending", "claimed"]);
+
+/** Map errors thrown by shared contract helpers to API errors. */
+function withHelperErrors<T>(run: () => T): T {
+  try {
+    return run();
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    const code = (error as Error).message;
+    if (code === "REVISION_CONFLICT") throw mockError("REVISION_CONFLICT");
+    if (code === "STATE_CONFLICT")
+      throw mockError(
+        "STATE_CONFLICT",
+        "Someone else changed this task first.",
+      );
+    if (code === "FORBIDDEN")
+      throw mockError(
+        "FORBIDDEN",
+        "Only the person who accepted this task can change it.",
+      );
+    if (code === "NOT_FOUND")
+      throw mockError("NOT_FOUND", "That task no longer exists.");
+    throw mockError("BAD_REQUEST", "That change could not be made.");
+  }
+}
+
+let suggestionCounter = 0;
+
+/**
+ * Deterministic practical suggestions (fixture mode stands in for the AI
+ * planner). Practical help only: never doses, schedules or treatment advice.
+ */
+function suggestPlan(
+  c: Case,
+  input: ReturnType<typeof planRequest.parse>,
+): { tasks: Task[]; tradeoffs: string[] } {
+  const make = (category: Task["category"], description: string): Task => ({
+    id: `mock-task-${++suggestionCounter}`,
+    category,
+    description,
+    owner: null,
+    status: "proposed",
+    acceptedAt: null,
+  });
+  const tasks: Task[] = [];
+  const tradeoffs: string[] = [];
+  const unconfirmed = c.fields.filter(
+    (f) => f.key !== "quantity" && f.reviewState !== "user_confirmed",
+  );
+  if (unconfirmed.length)
+    tasks.push(
+      make(
+        "review_label",
+        "Help read and check the parts of the label that are not confirmed yet",
+      ),
+    );
+  if (c.questions.length)
+    tasks.push(
+      make(
+        "call_pharmacy",
+        "Call the pharmacy with the questions listed on this label",
+      ),
+    );
+  for (const optionId of input.selectedOptionIds)
+    tasks.push(
+      make(
+        "research",
+        `Look into "${optionId === savingsFixture.id ? savingsFixture.sourceTitle : "the chosen savings source"}" and note what it needs`,
+      ),
+    );
+  tasks.push(
+    make(
+      "call_pharmacy",
+      "Ask the pharmacy what this quantity will cost before pickup",
+    ),
+  );
+  for (const s of input.supporterConstraints) {
+    if (/no|can't|cannot|none/i.test(s.transport))
+      tradeoffs.push(
+        "Your supporter cannot help with travel, so pickup may need another plan.",
+      );
+    else
+      tasks.push(
+        make(
+          "transport",
+          `Arrange a ride to pick up the medication (${s.transport})`,
+        ),
+      );
+    if (s.availability.trim())
+      tradeoffs.push(
+        `Your supporter is available: ${s.availability.trim()}. Calls and pickup may need to fit that time.`,
+      );
+    if (s.budget !== null)
+      tradeoffs.push(
+        `A budget of $${s.budget} was noted. Prices are not confirmed, so check the cost with the pharmacy.`,
+      );
+  }
+  return { tasks, tradeoffs };
+}
 
 // Same patterns as apps/api/src/explain.ts, so mock questions match.
 const COMPLEX =
@@ -442,9 +551,68 @@ export function createMockClient({
             fixture.originalDirections === directions ? fixture.references : [],
           unresolvedQuestions: questions,
           eligibleForExplanation: !complex,
-          fieldRevision: c.revision,
+          fieldRevision: fieldsRevisionOf(c),
         };
       });
+    },
+    updateSharing(caseId, body, signal) {
+      return respondCase(signal, () => {
+        const parsed = sharingRequest.safeParse(body);
+        if (!parsed.success)
+          throw mockError("BAD_REQUEST", "Invalid sharing choice.");
+        const next = withHelperErrors(() =>
+          applySharing(current(caseId), parsed.data),
+        );
+        store.set(caseId, next);
+        return next;
+      });
+    },
+    requestPlan(caseId, body, signal) {
+      return respond(signal, planResponse, () => {
+        const parsed = planRequest.safeParse(body);
+        if (!parsed.success)
+          throw mockError("BAD_REQUEST", "Invalid plan request.");
+        const c = current(caseId);
+        if (c.revision !== parsed.data.expectedRevision)
+          throw mockError("REVISION_CONFLICT");
+        const { tasks, tradeoffs } = suggestPlan(c, parsed.data);
+        const next = withHelperErrors(() => applyPlanTasks(c, tasks));
+        store.set(caseId, next);
+        return {
+          tasks: next.tasks,
+          tradeoffs,
+          fieldRevision: fieldsRevisionOf(next),
+        };
+      });
+    },
+    taskAction(caseId, taskId, body, as, signal) {
+      return respond(signal, taskActionResponse, () => {
+        const c = current(caseId);
+        if (as === "supporter" && !c.sharing.supporter)
+          throw mockError(
+            "FORBIDDEN",
+            "The patient is not sharing this label.",
+          );
+        const result = withHelperErrors(() =>
+          applyTaskAction(
+            c,
+            taskId,
+            body,
+            { id: `mock-${as}`, role: as },
+            now().toISOString(),
+          ),
+        );
+        store.set(caseId, result.case);
+        return { task: result.task, caseRevision: result.case.revision };
+      });
+    },
+    listShared(signal) {
+      return respond(signal, sharedCasesResponse, () =>
+        [...store.values()]
+          .filter((c) => now() < new Date(c.expiresAt))
+          .map((c) => sharedView(c))
+          .filter((v) => v !== null),
+      );
     },
     searchSavings(caseId, body, signal) {
       return respond(signal, savingsResponse, () => {
