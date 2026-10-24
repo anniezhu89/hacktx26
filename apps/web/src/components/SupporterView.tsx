@@ -37,43 +37,54 @@ export function SupporterView({ view }: { view: SupporterViewState }) {
       ) : (
         view.error && <ErrorBanner error={view.error} retrying={view.loading} />
       )}
-      {view.shared?.map((item) => (
-        <article
-          key={item.caseId}
-          className="panel stack-sm"
-          aria-label="Shared fictional label"
-        >
-          <h3>Shared label</h3>
-          {item.fields.length ? (
-            <dl className="compare">
-              {item.fields.map((f) => (
-                <div key={f.key}>
-                  <dt>{FIELD_LABELS[f.key]}</dt>
-                  <dd>
-                    {f.value ?? <strong className="unknown">Unknown</strong>}{" "}
-                    <span className="hint">
-                      (
-                      {f.reviewState === "user_confirmed"
-                        ? "confirmed by the patient"
-                        : "not confirmed yet"}
-                      )
-                    </span>
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          ) : (
-            <p className="hint">The patient shared tasks only.</p>
-          )}
-          <h4>Tasks</h4>
-          <TaskList
-            tasks={item.tasks}
-            viewer="supporter"
-            busy={view.acting}
-            onAction={(t, action) => void view.act(item, t.id, action)}
-          />
-        </article>
-      ))}
+      {view.shared?.map((item, index) => {
+        const name = item.fields.find((f) => f.key === "medicationName")?.value;
+        const title = `Shared label ${index + 1}${name ? `: ${name}` : ""}`;
+        return (
+          <article
+            key={item.caseId}
+            className="panel stack-sm"
+            aria-labelledby={`shared-${item.caseId}`}
+          >
+            <h3 id={`shared-${item.caseId}`}>{title}</h3>
+            {item.fields.length ? (
+              <dl className="compare">
+                {item.fields.map((f) => (
+                  <div key={f.key}>
+                    <dt>{FIELD_LABELS[f.key]}</dt>
+                    <dd>
+                      {f.value ?? (
+                        <strong className="unknown">
+                          {f.reviewState === "user_confirmed"
+                            ? "Unknown"
+                            : "Not shown until the patient confirms it"}
+                        </strong>
+                      )}{" "}
+                      <span className="hint">
+                        (
+                        {f.reviewState === "user_confirmed"
+                          ? "confirmed by the patient"
+                          : "not confirmed yet"}
+                        )
+                      </span>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              <p className="hint">The patient shared tasks only.</p>
+            )}
+            <h4>Tasks</h4>
+            <TaskList
+              tasks={item.tasks}
+              viewer="supporter"
+              busy={view.acting}
+              onAction={(t, action) => void view.act(item, t.id, action)}
+              label={`Tasks for ${title}`}
+            />
+          </article>
+        );
+      })}
       <button
         type="button"
         disabled={view.loading}

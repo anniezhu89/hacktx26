@@ -13,8 +13,29 @@ const TRANSPORT = [
 ];
 
 // Backend routes for sharing, plans and tasks are pending (contract v1.2).
-const unavailableCode = (e: ApiError) =>
-  e.code === "NOT_IMPLEMENTED" || e.code === "NOT_FOUND";
+const notImplemented = (e: ApiError) => e.code === "NOT_IMPLEMENTED";
+
+/**
+ * Some pending routes answer NOT_FOUND, which also means a missing case. Check
+ * the case: if it still loads, the route is missing; otherwise let the case
+ * session show that the case is gone.
+ */
+function unavailableHandler(
+  api: ApiClient,
+  caseId: string,
+  session: CaseSession,
+  onUnavailable: () => void,
+) {
+  return (e: ApiError) => {
+    if (notImplemented(e)) {
+      onUnavailable();
+      return true;
+    }
+    if (e.code !== "NOT_FOUND") return false;
+    api.getCase(caseId).then(onUnavailable, () => void session.reload());
+    return true;
+  };
+}
 
 function SharingForm({
   api,
@@ -54,11 +75,7 @@ function SharingForm({
         ? `Sharing saved: your supporter can see ${keys.map((k) => FIELD_LABELS[k]).join(", ")}.`
         : "Sharing turned off. Your supporter can no longer see this label in the app.",
       {
-        onError: (e) => {
-          if (!unavailableCode(e)) return false;
-          onUnavailable();
-          return true;
-        },
+        onError: unavailableHandler(api, caseData.id, session, onUnavailable),
       },
     );
   }
@@ -147,9 +164,17 @@ export function SharedSupport({
   // Suggestions belong to the fields they were made for.
   const currentPlan = plan?.key === fieldsRevision ? plan.data : null;
   const options = savings.data?.options ?? [];
-  const handleUnavailable = (e: ApiError) => {
-    if (!unavailableCode(e)) return false;
-    setUnavailable(true);
+  const markUnavailable = () => setUnavailable(true);
+  const handleUnavailable = unavailableHandler(
+    api,
+    caseData.id,
+    session,
+    markUnavailable,
+  );
+  // A missing task (NOT_FOUND) is a conflict, handled by the case session.
+  const handleTaskUnavailable = (e: ApiError) => {
+    if (!notImplemented(e)) return false;
+    markUnavailable();
     return true;
   };
 
@@ -184,7 +209,9 @@ export function SharedSupport({
           },
           signal,
         );
-        setPlan({ key: r.data.fieldRevision, data: r.data });
+        // A superseded request was aborted; do not store its suggestions.
+        if (!signal.aborted)
+          setPlan({ key: r.data.fieldRevision, data: r.data });
       },
       "Suggestions updated. Tasks someone already accepted were kept.",
       { onError: handleUnavailable },
@@ -207,7 +234,7 @@ export function SharedSupport({
         : action === "complete"
           ? "Task marked done."
           : "Task given back. It is a suggestion again.",
-      { taskAction: true, onError: handleUnavailable },
+      { taskAction: true, onError: handleTaskUnavailable },
     );
   }
 
@@ -229,7 +256,7 @@ export function SharedSupport({
             api={api}
             caseData={caseData}
             session={session}
-            onUnavailable={() => setUnavailable(true)}
+            onUnavailable={markUnavailable}
           />
 
           <form noValidate onSubmit={suggest} className="stack-sm">
@@ -337,6 +364,7 @@ export function SharedSupport({
             viewer="patient"
             busy={busy}
             onAction={(t, action) => act(t.id, action)}
+            supporterCutOff={!caseData.sharing.supporter}
           />
         </>
       )}

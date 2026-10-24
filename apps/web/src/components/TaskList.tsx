@@ -34,23 +34,39 @@ export function TaskList({
   viewer,
   busy,
   onAction,
+  label = "Tasks",
+  supporterCutOff = false,
 }: {
   tasks: Task[];
   viewer: TaskActor;
   busy: boolean;
   onAction: (task: Task, action: TaskAction) => void;
+  label?: string;
+  /** Patient view with sharing off: supporter tasks can be handed back. */
+  supporterCutOff?: boolean;
 }) {
   if (!tasks.length) return <p className="hint">No tasks yet.</p>;
   return (
-    <ul className="review-list" aria-label="Tasks">
+    <ul className="review-list" aria-label={label}>
       {tasks.map((t) => {
         const mine = t.ownerRole === viewer;
+        const stranded =
+          supporterCutOff &&
+          viewer === "patient" &&
+          t.status === "accepted" &&
+          t.ownerRole === "supporter";
         const name = <span className="sr-only">: {t.description}</span>;
         return (
           <li key={t.id} className={`review-card task-${t.status}`}>
             <p className="meta">{CATEGORY[t.category]}</p>
             <h5>{t.description}</h5>
             <p className="state-text">{statusText(t, viewer)}</p>
+            {stranded && (
+              <p className="hint">
+                Sharing is off, so your supporter can no longer see or update
+                this task. You can take it back as a suggestion.
+              </p>
+            )}
             <div className="actions">
               {t.status === "proposed" && (
                 <button
@@ -60,6 +76,15 @@ export function TaskList({
                   onClick={() => onAction(t, "claim")}
                 >
                   I&apos;ll do this{name}
+                </button>
+              )}
+              {stranded && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onAction(t, "release")}
+                >
+                  Take it back{name}
                 </button>
               )}
               {t.status === "accepted" && mine && (
