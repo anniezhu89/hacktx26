@@ -208,16 +208,104 @@ describe("contract-valid mock API", () => {
 });
 
 describe("HTTP client", () => {
-  const reply = (status: number, body: unknown) =>
-    (async () =>
-      new Response(JSON.stringify(body), {
-        status,
-        headers: { "content-type": "application/json" },
-      })) as unknown as typeof fetch;
+  const json = (status: number, body: unknown) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { "content-type": "application/json" },
+    });
+  const sessionOk = () =>
+    json(200, {
+      contractVersion: "1",
+      requestId: "s",
+      dataMode: "fixture",
+      data: { role: "patient" },
+    });
+  const unauthorized = () =>
+    json(401, {
+      error: {
+        code: "UNAUTHORIZED",
+        message: "Start a session",
+        retryable: false,
+        requestId: "u",
+      },
+    });
+  /** Fake server: /api/session succeeds unless overridden; logs every call. */
+  function server(
+    handle: (url: string, call: number) => Response,
+    session: () => Response = sessionOk,
+  ) {
+    const calls: string[] = [];
+    const fetchImpl = (async (url: string, init?: RequestInit) => {
+      calls.push(`${init?.method ?? "GET"} ${url}`);
+      return url === "/api/session" ? session() : handle(url, calls.length);
+    }) as unknown as typeof fetch;
+    return { calls, client: createHttpClient(fetchImpl) };
+  }
+  const data = sample("clear").fixture;
+  const caseOk = () =>
+    json(200, {
+      contractVersion: "1",
+      requestId: "r2",
+      dataMode: "fixture",
+      data,
+    });
+
+  it("starts one patient demo session before the first case request", async () => {
+    const { calls, client } = server(caseOk);
+    expect((await client.getCase(data.id)).case.id).toBe(data.id);
+    await client.getCase(data.id);
+    expect(calls).toEqual([
+      "POST /api/session",
+      `GET /api/cases/${data.id}`,
+      `GET /api/cases/${data.id}`,
+    ]);
+  });
+
+  it("restarts the session once after a 401, then surfaces later failures", async () => {
+    let failures = 1;
+    const { calls, client } = server(() =>
+      failures-- > 0 ? unauthorized() : caseOk(),
+    );
+    await expect(client.getCase(data.id)).resolves.toBeTruthy();
+    expect(calls.filter((c) => c === "POST /api/session")).toHaveLength(2);
+
+    const always = server(unauthorized);
+    await expect(always.client.getCase("x")).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
+    expect(always.calls).toHaveLength(4);
+  });
+
+  it("reports a failed session start and tries again on the next request", async () => {
+    let sessionFails = true;
+    const { calls, client } = server(caseOk, () =>
+      sessionFails
+        ? json(503, {
+            error: {
+              code: "PROVIDER_UNAVAILABLE",
+              message: "Down",
+              retryable: true,
+              requestId: "d",
+            },
+          })
+        : sessionOk(),
+    );
+    await expect(client.getCase(data.id)).rejects.toMatchObject({
+      code: "PROVIDER_UNAVAILABLE",
+      retryable: true,
+    });
+    sessionFails = false;
+    await expect(client.getCase(data.id)).resolves.toBeTruthy();
+    expect(calls).toEqual([
+      "POST /api/session",
+      "POST /api/session",
+      `GET /api/cases/${data.id}`,
+    ]);
+  });
 
   it("surfaces contract errors and rejects malformed success bodies", async () => {
-    const conflict = createHttpClient(
-      reply(409, {
+    const conflict = server(() =>
+      json(409, {
         error: {
           code: "REVISION_CONFLICT",
           message: "Changed",
@@ -225,7 +313,7 @@ describe("HTTP client", () => {
           requestId: "r1",
         },
       }),
-    );
+    ).client;
     const error = await conflict.getCase("x").catch((e) => e);
     expect(error).toBeInstanceOf(ApiError);
     expect(error).toMatchObject({
@@ -234,25 +322,16 @@ describe("HTTP client", () => {
       requestId: "r1",
     });
 
-    const malformed = createHttpClient(
-      reply(200, { data: { revision: "nope" } }),
-    );
-    await expect(malformed.getCase("x")).rejects.toMatchObject({
+    const malformed = server(() => json(200, { data: { revision: "nope" } }));
+    await expect(malformed.client.getCase("x")).rejects.toMatchObject({
       code: "INVALID_OUTPUT",
     });
   });
 
-  it("parses a contract-valid case and reports network failures as retryable", async () => {
-    const data = sample("clear").fixture;
-    const ok = createHttpClient(
-      reply(200, {
-        contractVersion: "1",
-        requestId: "r2",
-        dataMode: "fixture",
-        data,
-      }),
-    );
-    expect((await ok.getCase(data.id)).case.id).toBe(data.id);
+  it("sends JSON text intake and reports network failures as retryable", async () => {
+    const { calls, client } = server(caseOk);
+    await client.createCase({ kind: "text", text: "Fictional text" });
+    expect(calls).toEqual(["POST /api/session", "POST /api/cases"]);
     const offline = createHttpClient((async () => {
       throw new TypeError("network");
     }) as unknown as typeof fetch);
@@ -260,6 +339,28 @@ describe("HTTP client", () => {
       retryable: true,
       status: 0,
     });
+  });
+});
+
+describe("backend evidence conventions", () => {
+  const base = {
+    ...sample("clear").fixture.fields[1],
+    rawText: null,
+    value: null,
+  };
+  it("treats explanatory evidence as not read and markers as unreadable", () => {
+    expect(
+      fieldCondition({ ...base, evidence: "Not found in the provided text." }),
+    ).toBe("missing");
+    expect(
+      fieldCondition({
+        ...base,
+        evidence:
+          "Not read: no live image extraction provider is configured (fixture mode).",
+      }),
+    ).toBe("missing");
+    for (const marker of ["[unreadable]", "smudged", "[?]"])
+      expect(fieldCondition({ ...base, evidence: marker })).toBe("unreadable");
   });
 });
 

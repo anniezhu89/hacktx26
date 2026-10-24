@@ -66,7 +66,7 @@ function unextractedFields(): Case["fields"] {
     key,
     rawText: null,
     value: null,
-    evidence: "",
+    evidence: "Not read: the in-browser fixture mock cannot read this input.",
     crop: null,
     provenance: "ai" as const,
     reviewState: "unresolved" as const,

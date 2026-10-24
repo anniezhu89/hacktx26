@@ -49,14 +49,22 @@ export const PROVENANCE_TEXT: Record<LabelField["provenance"], string> = {
  * read but its meaning is unclear. "missing": nothing was extracted.
  *
  * The contract has no explicit issue marker yet, so this is derived:
- * rawText null + evidence → unreadable; rawText null + no evidence → missing;
+ * rawText null + an unreadable marker as evidence (e.g. "[unreadable]", the
+ * fixture and backend convention) → unreadable; rawText null otherwise →
+ * missing (its evidence is an explanatory note, not label text);
  * rawText present but no value or still unresolved → unclear.
  */
 export type FieldCondition = "readable" | "unreadable" | "unclear" | "missing";
 
+// Mirrors the backend's unreadable-marker pattern in apps/api/src/extract.ts.
+const UNREADABLE_MARKER =
+  /^\[?\s*(?:unreadable|illegible|smudged|unclear|torn|\?+)\s*\]?$/i;
+
 export function fieldCondition(field: LabelField): FieldCondition {
   if (field.rawText === null)
-    return field.evidence.trim() ? "unreadable" : "missing";
+    return UNREADABLE_MARKER.test(field.evidence.trim())
+      ? "unreadable"
+      : "missing";
   if (field.value === null || field.reviewState === "unresolved")
     return "unclear";
   return "readable";
@@ -77,9 +85,9 @@ export const CONDITION_TEXT: Record<
       "The words were read, but what they mean is not clear. Keep the exact wording; a question for the pharmacist is a good next step.",
   },
   missing: {
-    title: "Not found",
+    title: "Not read",
     detail:
-      "Nothing was extracted for this field. Type what your label says, or leave it unknown.",
+      "Nothing was read for this field. Type what your label says, or leave it unknown.",
   },
 };
 

@@ -3,6 +3,7 @@ import {
   caseResponse,
   fieldsRequest,
   intakeRequest,
+  sessionResponse,
   type Case,
 } from "@labelbridge/contracts";
 
@@ -58,7 +59,12 @@ export function toApiError(error: unknown): ApiError {
 
 type Fetch = typeof fetch;
 
-async function parseCase(response: Response): Promise<CaseResult> {
+type Envelope = { safeParse(body: unknown): { success: boolean } };
+
+async function parseEnvelope<S extends Envelope>(
+  response: Response,
+  schema: S,
+): Promise<Extract<ReturnType<S["safeParse"]>, { success: true }>> {
   let body: unknown;
   try {
     body = await response.json();
@@ -84,7 +90,7 @@ async function parseCase(response: Response): Promise<CaseResult> {
       response.status,
     );
   }
-  const parsed = caseResponse.safeParse(body);
+  const parsed = schema.safeParse(body);
   if (!parsed.success)
     throw new ApiError(
       "INVALID_OUTPUT",
@@ -92,10 +98,15 @@ async function parseCase(response: Response): Promise<CaseResult> {
       true,
       response.status,
     );
+  return parsed as Extract<ReturnType<S["safeParse"]>, { success: true }>;
+}
+
+async function parseCase(response: Response): Promise<CaseResult> {
+  const { data } = await parseEnvelope(response, caseResponse);
   return {
-    case: parsed.data.data,
-    dataMode: parsed.data.dataMode,
-    requestId: parsed.data.requestId,
+    case: data.data,
+    dataMode: data.dataMode,
+    requestId: data.requestId,
   };
 }
 
@@ -115,42 +126,74 @@ export function createHttpClient(fetchImpl: Fetch = fetch): ApiClient {
       throw toApiError(error);
     }
   };
+  // The backend requires a synthetic demo session cookie (POST /api/session)
+  // before case routes. This is persona selection, not authentication.
+  let session: Promise<unknown> | null = null;
+  const startSession = () => {
+    session = send("/api/session", json("POST", { role: "patient" }))
+      .then((res) => parseEnvelope(res, sessionResponse))
+      .catch((error) => {
+        session = null;
+        throw error;
+      });
+    return session;
+  };
+  // A 401 means the server forgot the session (e.g. it restarted): start a
+  // new one and retry once. The case itself may then be gone (404).
+  const withSession = async (call: () => Promise<CaseResult>) => {
+    await (session ?? startSession());
+    try {
+      return await call();
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== "UNAUTHORIZED")
+        throw error;
+      await startSession();
+      return call();
+    }
+  };
   return {
     kind: "http",
-    async createCase(source, signal) {
-      if (source.kind === "image") {
-        // Multipart field names are pending in the shared contract.
-        const form = new FormData();
-        form.append("image", source.file);
-        form.append("fictionalDataAcknowledged", "true");
-        return parseCase(
-          await send("/api/cases", {
-            method: "POST",
-            body: form,
-            credentials: "same-origin",
-            signal,
-          }),
-        );
-      }
+    createCase(source, signal) {
+      if (source.kind === "image")
+        return withSession(async () => {
+          const form = new FormData();
+          form.append("image", source.file);
+          form.append("fictionalDataAcknowledged", "true");
+          return parseCase(
+            await send("/api/cases", {
+              method: "POST",
+              body: form,
+              credentials: "same-origin",
+              signal,
+            }),
+          );
+        });
       const body = intakeRequest.parse({
         text: source.text,
         fictionalDataAcknowledged: true,
       });
-      return parseCase(await send("/api/cases", json("POST", body, signal)));
-    },
-    async getCase(id, signal) {
-      return parseCase(
-        await send(`/api/cases/${encodeURIComponent(id)}`, {
-          credentials: "same-origin",
-          signal,
-        }),
+      return withSession(async () =>
+        parseCase(await send("/api/cases", json("POST", body, signal))),
       );
     },
-    async updateFields(id, body, signal) {
-      return parseCase(
-        await send(
-          `/api/cases/${encodeURIComponent(id)}/fields`,
-          json("PATCH", fieldsRequest.parse(body), signal),
+    getCase(id, signal) {
+      return withSession(async () =>
+        parseCase(
+          await send(`/api/cases/${encodeURIComponent(id)}`, {
+            credentials: "same-origin",
+            signal,
+          }),
+        ),
+      );
+    },
+    updateFields(id, body, signal) {
+      const parsed = fieldsRequest.parse(body);
+      return withSession(async () =>
+        parseCase(
+          await send(
+            `/api/cases/${encodeURIComponent(id)}/fields`,
+            json("PATCH", parsed, signal),
+          ),
         ),
       );
     },

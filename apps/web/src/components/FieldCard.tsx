@@ -79,13 +79,16 @@ export function FieldCard({
             <ImageExcerpt
               src={imageSrc}
               crop={field.crop}
-              label={`Enlarged label excerpt for ${label}${field.evidence ? `: ${field.evidence}` : ""}`}
+              label={`Enlarged label excerpt for ${label}${condition === "missing" ? "" : `: ${field.evidence}`}`}
             />
           )}
-          {field.evidence ? (
-            <blockquote>{field.evidence}</blockquote>
+          {condition === "missing" || !field.evidence ? (
+            // Evidence here is an explanation from the reader, not label text.
+            <p className="hint">
+              {field.evidence || "No label excerpt is available."}
+            </p>
           ) : (
-            <p className="hint">No label excerpt is available.</p>
+            <blockquote>{field.evidence}</blockquote>
           )}
         </div>
 
