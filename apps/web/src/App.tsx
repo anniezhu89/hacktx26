@@ -57,6 +57,7 @@ export function App() {
   const [largeText, setLargeText] = useState(readLargeText);
   const [intakeMode, setIntakeMode] = useState<IntakeMode>("sample");
   const [persona, setPersona] = useState<Role>("patient");
+  const [announcement, setAnnouncement] = useState("");
   const focusedCase = useRef<string | null>(null);
   const focusOnce = useCallback((caseId: string) => {
     if (focusedCase.current === caseId) return false;
@@ -109,13 +110,19 @@ export function App() {
                   name="persona"
                   value={id}
                   checked={persona === id}
-                  onChange={() => setPersona(id)}
+                  onChange={() => {
+                    setPersona(id);
+                    setAnnouncement(`Showing the ${label.toLowerCase()} view.`);
+                  }}
                 />
                 {label}
               </label>
             ))}
           </div>
         </fieldset>
+        <p className="sr-only" aria-live="polite">
+          {announcement}
+        </p>
         {persona === "reviewer" ? (
           <VolunteerPane />
         ) : session.result ? (
