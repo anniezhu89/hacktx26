@@ -27,7 +27,9 @@ export function usePatientReviews(api: ApiClient, caseId: string | null) {
   const [reviews, setReviews] = useState<ReviewRequest[] | null>(null);
   const [dataMode, setDataMode] = useState<DataMode | null>(null);
   const [pending, setPending] = useState<"load" | "create" | null>(null);
-  const [error, setError] = useState<SessionError | null>(null);
+  const [error, setError] = useState<
+    (SessionError & { op: "load" | "create" }) | null
+  >(null);
   const tracker = useRef(createLatestTracker());
   const busy = useRef(false);
 
@@ -43,7 +45,7 @@ export function usePatientReviews(api: ApiClient, caseId: string | null) {
       setDataMode(r.dataMode);
     } catch (e) {
       if (isAbort(e) || !tracker.current.isCurrent(token)) return;
-      setError({ error: toApiError(e), retry: () => void load() });
+      setError({ op: "load", error: toApiError(e), retry: () => void load() });
     } finally {
       if (tracker.current.isCurrent(token)) setPending(null);
     }
@@ -79,6 +81,7 @@ export function usePatientReviews(api: ApiClient, caseId: string | null) {
         if (isAbort(e) || !tracker.current.isCurrent(token)) return false;
         const err = toApiError(e);
         setError({
+          op: "create",
           error: err,
           retry: err.retryable
             ? () => void create(selectedFields, expectedRevision)

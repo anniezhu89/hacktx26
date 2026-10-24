@@ -1,8 +1,12 @@
 import {
   apiError,
   caseResponse,
+  expectedRevision,
+  explanationResponse,
   fieldsRequest,
   intakeRequest,
+  savingsRequest,
+  savingsResponse,
   reviewClaimRequest,
   reviewCreateRequest,
   reviewResponse,
@@ -21,6 +25,11 @@ export type ReviewCreate = ReturnType<typeof reviewCreateRequest.parse>;
 export type ReviewRespond = ReturnType<typeof reviewResponseRequest.parse>;
 export type ErrorCode = ReturnType<typeof apiError.parse>["error"]["code"];
 export type Role = "patient" | "reviewer";
+export type ExplanationData = ReturnType<
+  typeof explanationResponse.parse
+>["data"];
+export type SavingsData = ReturnType<typeof savingsResponse.parse>["data"];
+export type SavingsRequest = ReturnType<typeof savingsRequest.parse>;
 export type { ReviewRequest, ReviewerView };
 
 export type IntakeSource =
@@ -74,6 +83,17 @@ export interface ApiClient {
   ): Promise<Result<ReviewRequest>>;
   /** Image source the reviewer may load for this view, or null. */
   reviewImageSrc(view: ReviewerView): string | null;
+  // Patient: understand and save
+  requestExplanation(
+    caseId: string,
+    body: { expectedRevision: number },
+    signal?: AbortSignal,
+  ): Promise<Result<ExplanationData>>;
+  searchSavings(
+    caseId: string,
+    body: SavingsRequest,
+    signal?: AbortSignal,
+  ): Promise<Result<SavingsData>>;
 }
 
 export class ApiError extends Error {
@@ -311,5 +331,25 @@ export function createHttpClient(fetchImpl: Fetch = fetch): ApiClient {
     },
     // The contract restricts imageUrl to the authorized review image route.
     reviewImageSrc: (view) => view.imageUrl,
+    requestExplanation(caseId, body, signal) {
+      const parsed = expectedRevision.parse(body);
+      return patient(async () => {
+        const res = await send(
+          path("cases", caseId, "explanation"),
+          json("POST", parsed, signal),
+        );
+        return unwrap((await parseEnvelope(res, explanationResponse)).data);
+      });
+    },
+    searchSavings(caseId, body, signal) {
+      const parsed = savingsRequest.parse(body);
+      return patient(async () => {
+        const res = await send(
+          path("cases", caseId, "savings-search"),
+          json("POST", parsed, signal),
+        );
+        return unwrap((await parseEnvelope(res, savingsResponse)).data);
+      });
+    },
   };
 }

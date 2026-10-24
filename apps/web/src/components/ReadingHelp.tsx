@@ -222,7 +222,10 @@ export function ReadingHelp({
   help: PatientReviews;
   onUploadClearer: () => void;
 }) {
-  const unavailable = help.error && isUnavailable(help.error.error);
+  // Only a failed list load means the server lacks the route; a failed
+  // create (e.g. the case was dropped) is shown as an ordinary error.
+  const unavailable =
+    help.error?.op === "load" && isUnavailable(help.error.error);
   const reviews = [...(help.reviews ?? [])].reverse();
   const hasCurrentOpen = reviews.some(
     (r) => OPEN.includes(r.status) && r.caseRevision === caseData.revision,

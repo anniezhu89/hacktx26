@@ -447,3 +447,19 @@ h5 {
 .excerpt {
   max-width: 36rem;
 }
+.side-by-side {
+  display: grid;
+  gap: 1rem;
+}
+.side-by-side > div > * + * {
+  margin-top: 0.4rem;
+}
+details summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+@media (min-width: 40rem) {
+  .side-by-side {
+    grid-template-columns: 1fr 1fr;
+  }
+}

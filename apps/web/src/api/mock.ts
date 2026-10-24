@@ -9,10 +9,19 @@ import {
   reviewResponseRequest,
   reviewerViewResponse,
   reviewsResponse,
+  eligibleForExplanation,
+  expectedRevision,
+  explanation,
+  explanationResponse,
+  savingsOption,
+  savingsRequest,
+  savingsResponse,
   type Case,
   type ReviewRequest,
 } from "@labelbridge/contracts";
 import { FIELD_ORDER } from "../lib/fields";
+import explanationFixture from "../../../../fixtures/explanation.json";
+import savingsFixture from "../../../../fixtures/savings.json";
 import { SAMPLES, findSample } from "../samples";
 import {
   ApiError,
@@ -88,6 +97,8 @@ export interface MockClient extends ApiClient {
   /** Store access for tests; simulates an edit from elsewhere. */
   store: Map<string, Case>;
   reviews: Map<string, ReviewRequest>;
+  /** Next savings search returns these options (tests); default is the fixture. */
+  nextSavings(options: unknown[]): void;
 }
 
 type Schema<T> = {
@@ -110,6 +121,21 @@ export function createMockClient({
     { imageSrc: string | null; text: string | null }
   >();
   let pendingFailure: ErrorCode | null = null;
+  let pendingSavings: unknown[] | null = null;
+
+  function requireCurrentRevision(id: string, body: unknown) {
+    const c = current(id);
+    const parsed = expectedRevision.safeParse(body);
+    if (!parsed.success) throw mockError("BAD_REQUEST", "Invalid request.");
+    if (parsed.data.expectedRevision !== c.revision)
+      throw mockError("REVISION_CONFLICT");
+    if (!eligibleForExplanation(c.fields))
+      throw mockError(
+        "NEEDS_CLARIFICATION",
+        "Confirm the medication name, strength, dosage form and directions first.",
+      );
+    return c;
+  }
 
   async function respond<T>(
     signal: AbortSignal | undefined,
@@ -378,6 +404,46 @@ export function createMockClient({
         r.status = outcome;
         r.proposals = proposals;
         return r;
+      });
+    },
+    nextSavings(options) {
+      pendingSavings = options;
+    },
+    requestExplanation(caseId, body, signal) {
+      return respond(signal, explanationResponse, () => {
+        const c = requireCurrentRevision(caseId, body);
+        const directions = c.fields.find(
+          (f) => f.key === "exactDirections",
+        )!.value!;
+        const fixture = explanation.parse(explanationFixture);
+        // Fixture mode never paraphrases: directions are returned verbatim.
+        return {
+          ...(fixture.originalDirections === directions
+            ? fixture
+            : {
+                originalDirections: directions,
+                simplifiedText: directions,
+                references: [],
+                unresolvedQuestions: [],
+                eligibleForExplanation: true,
+              }),
+          fieldRevision: c.revision,
+        };
+      });
+    },
+    searchSavings(caseId, body, signal) {
+      return respond(signal, savingsResponse, () => {
+        const parsed = savingsRequest.safeParse(body);
+        if (!parsed.success)
+          throw mockError("BAD_REQUEST", "Enter a city or ZIP code.");
+        requireCurrentRevision(caseId, {
+          expectedRevision: parsed.data.expectedRevision,
+        });
+        const options = (pendingSavings ?? [savingsFixture]).map((o) =>
+          savingsOption.parse(o),
+        );
+        pendingSavings = null;
+        return { options };
       });
     },
     reviewImageSrc(view) {

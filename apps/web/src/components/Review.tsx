@@ -12,7 +12,9 @@ import type { CaseSession, DisplaySource } from "../state/useCaseSession";
 import { usePatientReviews } from "../state/useReviews";
 import { ErrorBanner } from "./ErrorBanner";
 import { FieldCard } from "./FieldCard";
+import { Explanation } from "./Explanation";
 import { ReadingHelp } from "./ReadingHelp";
+import { Savings } from "./Savings";
 
 function SourcePanel({ source }: { source: DisplaySource }) {
   if (source.kind === "text")
@@ -104,7 +106,8 @@ export function Review({
         {eligible ? (
           <p>
             <strong>Ready for an explanation.</strong> All required fields are
-            confirmed. (The explanation step is not built yet.)
+            confirmed. Continue to{" "}
+            <a href="#understand-heading">Understand your directions</a>.
           </p>
         ) : (
           <>
@@ -168,6 +171,9 @@ export function Review({
         help={help}
         onUploadClearer={onUploadClearer}
       />
+
+      <Explanation api={api} caseData={c} session={session} />
+      <Savings api={api} caseData={c} session={session} />
 
       <div className="actions">
         <button type="button" onClick={onUploadClearer} disabled={busy}>
