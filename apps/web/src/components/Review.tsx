@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { eligibleForExplanation } from "@labelbridge/contracts";
-import type { CaseResult, DataMode } from "../api/client";
+import type { ApiClient, CaseResult } from "../api/client";
+import { DATA_MODE_TEXT } from "../lib/dataMode";
 import {
   FIELD_LABELS,
   FIELD_ORDER,
@@ -8,14 +9,10 @@ import {
   reviewProgress,
 } from "../lib/fields";
 import type { CaseSession, DisplaySource } from "../state/useCaseSession";
+import { usePatientReviews } from "../state/useReviews";
 import { ErrorBanner } from "./ErrorBanner";
 import { FieldCard } from "./FieldCard";
-
-export const DATA_MODE_TEXT: Record<DataMode, string> = {
-  fixture: "Fixture data: built-in fictional examples, not a live reading",
-  cached: "Cached data: saved from an earlier request",
-  live: "Live data",
-};
+import { ReadingHelp } from "./ReadingHelp";
 
 function SourcePanel({ source }: { source: DisplaySource }) {
   if (source.kind === "text")
@@ -38,11 +35,15 @@ function SourcePanel({ source }: { source: DisplaySource }) {
 }
 
 export function Review({
+  api,
   session,
   result,
   source,
   onUploadClearer,
+  focusOnce,
 }: {
+  focusOnce: (caseId: string) => boolean;
+  api: ApiClient;
   session: CaseSession;
   result: CaseResult;
   source: DisplaySource | null;
@@ -50,7 +51,12 @@ export function Review({
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
   const c = result.case;
-  useEffect(() => heading.current?.focus(), [c.id]);
+  const help = usePatientReviews(api, c.id);
+  // Focus once per new case; returning from the volunteer view must not move
+  // focus, because that change comes from a radio button.
+  useEffect(() => {
+    if (focusOnce(c.id)) heading.current?.focus();
+  }, [c.id, focusOnce]);
 
   const fields = FIELD_ORDER.map((k) => c.fields.find((f) => f.key === k)!);
   const progress = reviewProgress(fields);
@@ -155,6 +161,13 @@ export function Review({
           ))}
         </ul>
       </div>
+
+      <ReadingHelp
+        caseData={c}
+        session={session}
+        help={help}
+        onUploadClearer={onUploadClearer}
+      />
 
       <div className="actions">
         <button type="button" onClick={onUploadClearer} disabled={busy}>

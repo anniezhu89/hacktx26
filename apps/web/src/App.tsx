@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { healthResponse } from "@labelbridge/contracts";
 import { api } from "./api";
+import type { Role } from "./api/client";
 import { Intake, type IntakeMode } from "./components/Intake";
 import { Review } from "./components/Review";
+import { VolunteerView } from "./components/VolunteerView";
 import { useCaseSession } from "./state/useCaseSession";
+import { useReviewerQueue } from "./state/useReviews";
 
 const LARGE_TEXT_KEY = "labelbridge.largeText";
 
@@ -44,10 +47,22 @@ function HealthCheck() {
   );
 }
 
+// Mounted only in the volunteer view, so the queue loads when it is opened.
+function VolunteerPane() {
+  return <VolunteerView queue={useReviewerQueue(api)} />;
+}
+
 export function App() {
   const session = useCaseSession(api);
   const [largeText, setLargeText] = useState(readLargeText);
   const [intakeMode, setIntakeMode] = useState<IntakeMode>("sample");
+  const [persona, setPersona] = useState<Role>("patient");
+  const focusedCase = useRef<string | null>(null);
+  const focusOnce = useCallback((caseId: string) => {
+    if (focusedCase.current === caseId) return false;
+    focusedCase.current = caseId;
+    return true;
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("large-text", largeText);
@@ -74,18 +89,39 @@ export function App() {
         <h1>LabelBridge</h1>
         {api.kind === "mock" && (
           <p className="banner banner-info">
-            Case data comes from built-in fictional fixtures in your browser.
-            The server does not handle cases yet, and nothing is read by AI.
+            This build uses built-in fictional fixtures in your browser instead
+            of the server. Nothing is read by AI.
           </p>
         )}
         <HealthCheck />
-        {session.expired && (
-          <div className="banner banner-error" role="alert">
-            <p>{session.expired}</p>
+        <fieldset className="persona">
+          <legend>Demo view (switching is a demo feature, not a login)</legend>
+          <div className="choices inline">
+            {(
+              [
+                ["patient", "Patient"],
+                ["reviewer", "Volunteer reader"],
+              ] as const
+            ).map(([id, label]) => (
+              <label key={id} className="choice">
+                <input
+                  type="radio"
+                  name="persona"
+                  value={id}
+                  checked={persona === id}
+                  onChange={() => setPersona(id)}
+                />
+                {label}
+              </label>
+            ))}
           </div>
-        )}
-        {session.result ? (
+        </fieldset>
+        {persona === "reviewer" ? (
+          <VolunteerPane />
+        ) : session.result ? (
           <Review
+            focusOnce={focusOnce}
+            api={api}
             session={session}
             result={session.result}
             source={session.source}
@@ -95,12 +131,19 @@ export function App() {
             }}
           />
         ) : (
-          <Intake
-            key={intakeMode}
-            session={session}
-            apiKind={api.kind}
-            initialMode={intakeMode}
-          />
+          <>
+            {session.expired && (
+              <div className="banner banner-error" role="alert">
+                <p>{session.expired}</p>
+              </div>
+            )}
+            <Intake
+              key={intakeMode}
+              session={session}
+              apiKind={api.kind}
+              initialMode={intakeMode}
+            />
+          </>
         )}
       </main>
     </>

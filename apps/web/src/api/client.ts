@@ -3,13 +3,25 @@ import {
   caseResponse,
   fieldsRequest,
   intakeRequest,
+  reviewClaimRequest,
+  reviewCreateRequest,
+  reviewResponse,
+  reviewResponseRequest,
+  reviewerViewResponse,
+  reviewsResponse,
   sessionResponse,
   type Case,
+  type ReviewRequest,
+  type ReviewerView,
 } from "@labelbridge/contracts";
 
 export type DataMode = "live" | "cached" | "fixture";
 export type FieldsRequest = ReturnType<typeof fieldsRequest.parse>;
+export type ReviewCreate = ReturnType<typeof reviewCreateRequest.parse>;
+export type ReviewRespond = ReturnType<typeof reviewResponseRequest.parse>;
 export type ErrorCode = ReturnType<typeof apiError.parse>["error"]["code"];
+export type Role = "patient" | "reviewer";
+export type { ReviewRequest, ReviewerView };
 
 export type IntakeSource =
   | { kind: "sample"; sampleId: string; text: string }
@@ -18,6 +30,12 @@ export type IntakeSource =
 
 export interface CaseResult {
   case: Case;
+  dataMode: DataMode;
+  requestId: string;
+}
+
+export interface Result<T> {
+  data: T;
   dataMode: DataMode;
   requestId: string;
 }
@@ -32,6 +50,30 @@ export interface ApiClient {
     body: FieldsRequest,
     signal?: AbortSignal,
   ): Promise<CaseResult>;
+  // Patient: human reading help
+  createReview(
+    caseId: string,
+    body: ReviewCreate,
+    signal?: AbortSignal,
+  ): Promise<Result<ReviewRequest>>;
+  listCaseReviews(
+    caseId: string,
+    signal?: AbortSignal,
+  ): Promise<Result<ReviewRequest[]>>;
+  // Volunteer reviewer
+  listReviewQueue(signal?: AbortSignal): Promise<Result<ReviewRequest[]>>;
+  claimReview(id: string, signal?: AbortSignal): Promise<Result<ReviewerView>>;
+  getReviewerView(
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<Result<ReviewerView>>;
+  respondToReview(
+    id: string,
+    body: ReviewRespond,
+    signal?: AbortSignal,
+  ): Promise<Result<ReviewRequest>>;
+  /** Image source the reviewer may load for this view, or null. */
+  reviewImageSrc(view: ReviewerView): string | null;
 }
 
 export class ApiError extends Error {
@@ -110,11 +152,21 @@ async function parseCase(response: Response): Promise<CaseResult> {
   };
 }
 
+const unwrap = <T>(e: { data: T; dataMode: DataMode; requestId: string }) => ({
+  data: e.data,
+  dataMode: e.dataMode,
+  requestId: e.requestId,
+});
+
 export function createHttpClient(fetchImpl: Fetch = fetch): ApiClient {
   const json = (method: string, body: unknown, signal?: AbortSignal) => ({
     method,
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
+    credentials: "same-origin" as const,
+    signal,
+  });
+  const get = (signal?: AbortSignal) => ({
     credentials: "same-origin" as const,
     signal,
   });
@@ -126,36 +178,53 @@ export function createHttpClient(fetchImpl: Fetch = fetch): ApiClient {
       throw toApiError(error);
     }
   };
-  // The backend requires a synthetic demo session cookie (POST /api/session)
-  // before case routes. This is persona selection, not authentication.
-  let session: Promise<unknown> | null = null;
-  const startSession = () => {
-    session = send("/api/session", json("POST", { role: "patient" }))
+  // The backend requires a synthetic demo session cookie (POST /api/session).
+  // Its role is a demo persona, not authentication; switching keeps the same
+  // demo workspace so patient and volunteer views share fictional cases.
+  let session: Promise<Role> | null = null;
+  const startSession = (role: Role) => {
+    session = send("/api/session", json("POST", { role }))
       .then((res) => parseEnvelope(res, sessionResponse))
+      .then(() => role)
       .catch((error) => {
         session = null;
         throw error;
       });
     return session;
   };
+  // One shared cookie carries the role, so a role check and the request it
+  // guards run one at a time: an overlapping call for another persona must
+  // not switch the cookie between them.
+  let queue: Promise<unknown> = Promise.resolve();
   // A 401 means the server forgot the session (e.g. it restarted): start a
   // new one and retry once. The case itself may then be gone (404).
-  const withSession = async (call: () => Promise<CaseResult>) => {
-    await (session ?? startSession());
-    try {
-      return await call();
-    } catch (error) {
-      if (!(error instanceof ApiError) || error.code !== "UNAUTHORIZED")
-        throw error;
-      await startSession();
-      return call();
-    }
+  const withSession = <T>(role: Role, call: () => Promise<T>) => {
+    const run = async () => {
+      const current = await (session ?? startSession(role));
+      if (current !== role) await startSession(role);
+      try {
+        return await call();
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.code !== "UNAUTHORIZED")
+          throw error;
+        await startSession(role);
+        return call();
+      }
+    };
+    const next = queue.then(run, run);
+    queue = next.catch(() => undefined);
+    return next;
   };
+  const patient = <T>(call: () => Promise<T>) => withSession("patient", call);
+  const reviewer = <T>(call: () => Promise<T>) => withSession("reviewer", call);
+  const path = (...parts: string[]) =>
+    `/api/${parts.map(encodeURIComponent).join("/")}`;
+
   return {
     kind: "http",
     createCase(source, signal) {
       if (source.kind === "image")
-        return withSession(async () => {
+        return patient(async () => {
           const form = new FormData();
           form.append("image", source.file);
           form.append("fictionalDataAcknowledged", "true");
@@ -172,30 +241,75 @@ export function createHttpClient(fetchImpl: Fetch = fetch): ApiClient {
         text: source.text,
         fictionalDataAcknowledged: true,
       });
-      return withSession(async () =>
+      return patient(async () =>
         parseCase(await send("/api/cases", json("POST", body, signal))),
       );
     },
     getCase(id, signal) {
-      return withSession(async () =>
-        parseCase(
-          await send(`/api/cases/${encodeURIComponent(id)}`, {
-            credentials: "same-origin",
-            signal,
-          }),
-        ),
+      return patient(async () =>
+        parseCase(await send(path("cases", id), get(signal))),
       );
     },
     updateFields(id, body, signal) {
       const parsed = fieldsRequest.parse(body);
-      return withSession(async () =>
+      return patient(async () =>
         parseCase(
           await send(
-            `/api/cases/${encodeURIComponent(id)}/fields`,
+            path("cases", id, "fields"),
             json("PATCH", parsed, signal),
           ),
         ),
       );
     },
+    createReview(caseId, body, signal) {
+      const parsed = reviewCreateRequest.parse(body);
+      return patient(async () => {
+        const res = await send(
+          path("cases", caseId, "reviews"),
+          json("POST", parsed, signal),
+        );
+        return unwrap((await parseEnvelope(res, reviewResponse)).data);
+      });
+    },
+    listCaseReviews(caseId, signal) {
+      return patient(async () => {
+        const res = await send(path("cases", caseId, "reviews"), get(signal));
+        return unwrap((await parseEnvelope(res, reviewsResponse)).data);
+      });
+    },
+    listReviewQueue(signal) {
+      return reviewer(async () => {
+        const res = await send("/api/reviews", get(signal));
+        return unwrap((await parseEnvelope(res, reviewsResponse)).data);
+      });
+    },
+    claimReview(id, signal) {
+      const body = reviewClaimRequest.parse({ expectedState: "pending" });
+      return reviewer(async () => {
+        const res = await send(
+          path("reviews", id, "claim"),
+          json("POST", body, signal),
+        );
+        return unwrap((await parseEnvelope(res, reviewerViewResponse)).data);
+      });
+    },
+    getReviewerView(id, signal) {
+      return reviewer(async () => {
+        const res = await send(path("reviews", id), get(signal));
+        return unwrap((await parseEnvelope(res, reviewerViewResponse)).data);
+      });
+    },
+    respondToReview(id, body, signal) {
+      const parsed = reviewResponseRequest.parse(body);
+      return reviewer(async () => {
+        const res = await send(
+          path("reviews", id, "response"),
+          json("POST", parsed, signal),
+        );
+        return unwrap((await parseEnvelope(res, reviewResponse)).data);
+      });
+    },
+    // The contract restricts imageUrl to the authorized review image route.
+    reviewImageSrc: (view) => view.imageUrl,
   };
 }

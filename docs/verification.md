@@ -60,3 +60,15 @@ Known gaps after F1:
 ## Contract v1.1 (integration, additive)
 
 Added reviewer view and excerpt schemas, `reviewerViewResponse`, `fromReviewId` on field changes (volunteer provenance), documented patient review read and reviewer image routes, and three fixtures (nine validated in total). Contract tests in `tests/unit/contracts-v1-1.test.ts` cover strict rejection of AI values in excerpts, excerpts limited to the selected fields, the authorized image path pattern, and provenance. Backend routes for v1.1 are not implemented yet; see docs/handoff.md.
+
+## Frontend F2 (human reading help, fixture mode)
+
+Commits `376f3446bd5881fa5bb1bc66a160c0fca012a224` (F2) and `46bac23ee511c9143857b9241fca3e569a9cb812` (review fixes): clean verification PASS for each, 66 tests.
+
+Implemented: the patient selects fields and gives explicit consent, then sees request status and compares each volunteer reading with the current value. A reading is applied only by explicit action (`fromReviewId`) and never confirmed automatically, so explanations stay blocked until the patient confirms. The volunteer view shows only the requested label excerpts with no extracted values, requires typed text or "can't read" for each part, or asks for a clearer image. A demo persona switch (labeled as not a login). The HTTP client serializes demo-role switches. The mock implements the v1.1 workflow with double-claim, stale-revision and mismatched-value conflicts.
+
+Review: an independent subagent review of `376f344` found one blocking issue (the mock gave the volunteer the extracted value as "typed text") and several should-fix items. All were fixed in `46bac23` and re-reviewed with no blocking findings. A human independent review has not been done.
+
+Browser evidence (scripted Chromium, outside the repository): the fixture build passed the full patient → volunteer → patient flow, the clearer-image path, 360px layout and named tab stops. The intermittent failure seen once (1 of 7 runs, at a second request after starting over) was not reproduced in 6 later runs and remains under observation. Against the B1 backend, reading help shows "not available on this server yet" because the backend review routes are pending.
+
+Known gaps: backend review routes; one stable volunteer identity per demo workspace across role switches (backend `session.ts`); confirmation resets provenance to `user` (shared helper; changing it needs a backend test update); no fetch timeout in the HTTP client; screen-reader testing.

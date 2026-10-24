@@ -1,4 +1,5 @@
 import { caseSchema, type Case } from "@labelbridge/contracts";
+import ambiguousFixture from "../../../fixtures/ambiguous.json";
 import clearFixture from "../../../fixtures/clear.json";
 import unreadableFixture from "../../../fixtures/unreadable.json";
 import type { FieldKey } from "./lib/fields";
@@ -30,28 +31,7 @@ const crops: Record<FieldKey, Crop> = {
 const header = "FICTIONAL DEMO PHARMACY - NOT A REAL PRESCRIPTION";
 
 const clear = caseSchema.parse(clearFixture);
-
-// No shared fixture exists for readable-but-unclear directions yet; derive one
-// from the clear fixture and validate it against the shared schema.
-const unclear = caseSchema.parse({
-  ...clear,
-  id: "synthetic-unclear",
-  status: "reviewing",
-  questions: [
-    "The directions only say “Use as directed.” Ask the pharmacist what that means for you.",
-  ],
-  fields: clear.fields.map((f) =>
-    f.key === "exactDirections"
-      ? {
-          ...f,
-          value: "Use as directed.",
-          rawText: "Use as directed.",
-          evidence: "Use as directed.",
-          reviewState: "unresolved",
-        }
-      : f,
-  ),
-});
+const unclear = caseSchema.parse(ambiguousFixture);
 
 export const SAMPLES: SampleLabel[] = [
   {
