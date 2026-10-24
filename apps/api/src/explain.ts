@@ -4,6 +4,7 @@ import {
   type Case,
 } from "@labelbridge/contracts";
 import { ApiError, type Infer } from "./errors";
+import { findSupportedProduct } from "./products";
 
 const complexDirections =
   /\b(?:taper|then|decrease|increase|alternate|alternating|day\s*\d|week\s*\d|until|sliding scale)\b/i;
@@ -39,11 +40,16 @@ export function buildExplanation(current: Case): Infer<typeof explanation> {
     questions.push(
       "The directions include both a frequency and 'as needed' (or 'as directed'). Ask your pharmacist when a dose should and should not be taken.",
     );
+  const product = findSupportedProduct(current.fields);
+  if (!product)
+    questions.push(
+      "This exact medication, strength and form is not in the demo reference set. Ask your pharmacist for the written drug information that comes with it.",
+    );
   return explanation.parse({
     originalDirections: directions,
     simplifiedText: complex ? "" : directions,
     fieldRevision: current.revision,
-    references: [],
+    references: product?.references ?? [],
     unresolvedQuestions: questions,
     eligibleForExplanation: !complex,
   });
