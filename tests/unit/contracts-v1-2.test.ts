@@ -28,11 +28,16 @@ const proposal = (id: string): Task => ({
 });
 
 describe("contract v1.2 tasks", () => {
+  // Shared first: supporters can only act on shared cases.
   const planned = () =>
-    applyPlanTasks(caseSchema.parse(fixture("clear")), [
-      proposal("ride"),
-      proposal("call"),
-    ]);
+    applyPlanTasks(
+      applySharing(caseSchema.parse(fixture("clear")), {
+        expectedRevision: 0,
+        supporter: true,
+        fieldKeys: [],
+      }),
+      [proposal("ride"), proposal("call")],
+    );
 
   it("claims explicitly and rejects a second claim", () => {
     const c = planned();
@@ -195,5 +200,97 @@ describe("contract v1.2 revisions and sharing", () => {
     });
     expect(withdrawn.sharing).toEqual({ supporter: false, fieldKeys: [] });
     expect(sharedView(withdrawn)).toBeNull();
+  });
+});
+
+describe("contract v1.2 review fixes", () => {
+  const confirmedShared = (
+    keys: ("medicationName" | "strength" | "quantity")[],
+  ) => {
+    const c = caseSchema.parse(fixture("clear"));
+    for (const f of c.fields)
+      if (f.key !== "strength") f.reviewState = "user_confirmed";
+    return applySharing(c, {
+      expectedRevision: 0,
+      supporter: true,
+      fieldKeys: keys,
+    });
+  };
+
+  it("shares only confirmed values; unconfirmed shared fields show no value", () => {
+    const view = sharedView(confirmedShared(["medicationName", "strength"]))!;
+    expect(view.fields).toEqual([
+      {
+        key: "medicationName",
+        value: "Fictional Demo Tablet",
+        reviewState: "user_confirmed",
+      },
+      { key: "strength", value: null, reviewState: "unreviewed" },
+    ]);
+  });
+
+  it("redacts unshared or unconfirmed values from task text", () => {
+    const c = applyPlanTasks(confirmedShared(["medicationName"]), [
+      {
+        ...proposal("ask"),
+        category: "call_pharmacy",
+        description:
+          "Ask if 0.5 MG comes in a 30 count of Fictional Demo Tablet",
+      },
+    ]);
+    const [t] = sharedView(c)!.tasks;
+    // Dosage form ("tablet") is not shared, so it is redacted even inside
+    // the shared name: over-redaction is the safe direction.
+    expect(t.description).toBe(
+      "Ask if [not shared] comes in a [not shared] count of Fictional Demo [not shared]",
+    );
+    const c300 = applyPlanTasks(confirmedShared(["medicationName"]), [
+      { ...proposal("n"), description: "Compare a 300 count" },
+    ]);
+    expect(sharedView(c300)!.tasks[0].description).toBe("Compare a 300 count");
+  });
+
+  it("lets the patient release a supporter's task once sharing is off, not before", () => {
+    let c = applyPlanTasks(confirmedShared(["medicationName"]), [
+      proposal("ride"),
+    ]);
+    c = applyTaskAction(
+      c,
+      "ride",
+      { expectedRevision: c.revision, action: "claim" },
+      supporter,
+      now,
+    ).case;
+    expect(() =>
+      applyTaskAction(
+        c,
+        "ride",
+        { expectedRevision: c.revision, action: "release" },
+        patient,
+        now,
+      ),
+    ).toThrow("FORBIDDEN");
+    c = applySharing(c, {
+      expectedRevision: c.revision,
+      supporter: false,
+      fieldKeys: [],
+    });
+    expect(() =>
+      applyTaskAction(
+        c,
+        "ride",
+        { expectedRevision: c.revision, action: "complete" },
+        patient,
+        now,
+      ),
+    ).toThrow("FORBIDDEN");
+    const { task: released } = applyTaskAction(
+      c,
+      "ride",
+      { expectedRevision: c.revision, action: "release" },
+      patient,
+      now,
+    );
+    expect(released).toMatchObject({ status: "proposed", owner: null });
   });
 });
