@@ -1,0 +1,10 @@
+node_modules
+**/dist
+.tools
+.worktrees
+.verification
+Microsoft
+package-lock.json
+playwright-report
+test-results
+LabelBridge_Agent_Build_Plan.md

@@ -1,0 +1,20 @@
+{
+  "id": "synthetic-resource",
+  "sourceTitle": "Medicare cost help information (fixture link only)",
+  "url": "https://www.medicare.gov/basics/costs/help/drug-costs",
+  "retrievedAt": "2026-10-24T12:00:00.000Z",
+  "matchedProduct": {
+    "medicationName": null,
+    "strength": null,
+    "dosageForm": null,
+    "quantity": null,
+    "location": null
+  },
+  "optionType": "resource",
+  "amount": null,
+  "currency": null,
+  "priceBasis": "unknown",
+  "sourceEvidence": null,
+  "eligibilityNotes": ["Not retrieved live; eligibility unknown"],
+  "missingRequirements": ["Eligibility and product matching not assessed"]
+}

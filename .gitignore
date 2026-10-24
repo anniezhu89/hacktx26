@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.tools/
+.worktrees/
+.verification/
+playwright-report/
+test-results/
+.env
+.env.*
+!.env.example

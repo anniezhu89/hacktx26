@@ -1,0 +1,14 @@
+{
+  "name": "@labelbridge/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup src/server.ts --format esm --out-dir dist --no-splitting"
+  },
+  "dependencies": {
+    "@labelbridge/contracts": "1.0.0",
+    "express": "5.3.0"
+  }
+}

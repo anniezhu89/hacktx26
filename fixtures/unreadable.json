@@ -1,0 +1,61 @@
+{
+  "fictionalData": true,
+  "id": "synthetic-unreadable",
+  "createdAt": "2026-10-24T12:00:00.000Z",
+  "questions": [],
+  "expiresAt": "2026-10-24T13:00:00.000Z",
+  "sharing": {
+    "supporter": false,
+    "fieldKeys": []
+  },
+  "fields": [
+    {
+      "value": "Fictional Demo Tablet",
+      "provenance": "ai",
+      "rawText": "Fictional Demo Tablet",
+      "evidence": "Fictional Demo Tablet",
+      "reviewState": "unreviewed",
+      "key": "medicationName",
+      "crop": null
+    },
+    {
+      "crop": null,
+      "provenance": "ai",
+      "reviewState": "unresolved",
+      "key": "strength",
+      "value": null,
+      "rawText": null,
+      "evidence": "[unreadable]"
+    },
+    {
+      "value": "tablet",
+      "provenance": "ai",
+      "rawText": "tablet",
+      "evidence": "tablet",
+      "reviewState": "unreviewed",
+      "key": "dosageForm",
+      "crop": null
+    },
+    {
+      "value": "30",
+      "provenance": "ai",
+      "rawText": "30",
+      "evidence": "30",
+      "reviewState": "unreviewed",
+      "key": "quantity",
+      "crop": null
+    },
+    {
+      "value": "Take one tablet twice daily as needed.",
+      "provenance": "ai",
+      "rawText": "Take one tablet twice daily as needed.",
+      "evidence": "Take one tablet twice daily as needed.",
+      "reviewState": "unreviewed",
+      "key": "exactDirections",
+      "crop": null
+    }
+  ],
+  "revision": 0,
+  "status": "needs_help",
+  "tasks": []
+}

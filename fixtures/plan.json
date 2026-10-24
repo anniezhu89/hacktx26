@@ -1,0 +1,19 @@
+{
+  "contractVersion": "1",
+  "requestId": "fixture-plan",
+  "dataMode": "fixture",
+  "data": {
+    "tasks": [
+      {
+        "id": "synthetic-task",
+        "category": "call_pharmacy",
+        "description": "Prepare questions for a pharmacist",
+        "owner": null,
+        "status": "proposed",
+        "acceptedAt": null
+      }
+    ],
+    "tradeoffs": [],
+    "fieldRevision": 0
+  }
+}

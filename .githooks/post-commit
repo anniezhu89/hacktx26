@@ -1,0 +1,2 @@
+#!/bin/sh
+printf '%s\n' 'LabelBridge: UNVERIFIED until npm run verify:sha -- HEAD passes. Integration also requires independent review.' >&2

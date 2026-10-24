@@ -1,0 +1,25 @@
+body {
+  font-family: system-ui, sans-serif;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  margin: 0;
+  color: #163329;
+  background: #f5f8f6;
+}
+main {
+  max-width: 48rem;
+  padding: 2rem;
+  margin: auto;
+}
+button {
+  font: inherit;
+  padding: 0.8rem;
+  border: 2px solid #163329;
+  border-radius: 0.4rem;
+  background: white;
+  color: inherit;
+}
+button:focus-visible {
+  outline: 4px solid #286cc6;
+  outline-offset: 4px;
+}
