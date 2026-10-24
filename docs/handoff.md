@@ -14,3 +14,7 @@ Only fixture-mode health is wired end to end. The eligibility/revision helpers a
 Each agent runs npm ci in its worktree. Portable Node is available from the root checkout, not copied into worktrees. Separate development ports: frontend WEB_PORT=5173/API_TARGET=http://127.0.0.1:3001; backend PORT=3002 for independent development. When jointly testing backend 3002, set frontend API_TARGET accordingly. Do not run simultaneous verification suites on default smoke ports; set SMOKE_PORT and SMOKE_WEB_PORT to distinct ports per process.
 
 Follow AGENTS.md and the plan's required handoff format. Request dependency/contract updates from integrator. Do not modify another writer's files, the lockfile or shared tests. No agents have been launched automatically.
+
+## Executed foundation checks
+
+Author suite: format/lint/types, six fixtures, eight unit/API tests, production build. Chromium foundation smoke: two tests cover production serving and the development proxy (including a 360px keyboard check). Initial committed-SHA verification exposed Windows CRLF conversion and was marked FAILED; the corrective LF rule must pass clean verification before these branches are created. Consult `.verification/<final-SHA>.json` for the actual committed-SHA status. No live provider calls, hosted CI execution or deployment is claimed.

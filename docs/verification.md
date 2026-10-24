@@ -18,3 +18,10 @@ Pending acceptance criteria (no passing placeholders):
 - Independent review of each increment; hosted CI run/required branch checks; deployment and deployed-SHA smoke.
 
 Do not advance a failing commit. Every integration merge requires clean-SHA check and full available end-to-end suite. Do not count pending product criteria as passed by the foundation tests.
+
+## Bootstrap execution evidence
+
+- Initial scaffold SHA `7672d2cb27d5ad0b16c8cfa665fdf272afda3dcf`: **FAILED** clean-SHA verification. `npm ci` passed with zero reported vulnerabilities; `npm run check` failed at formatting because Windows Git checked source files out with CRLF. No integration or implementer branches advanced to this SHA.
+- Corrective change: `.gitattributes` requires LF for text files across clean checkouts. Post-commit hook is also marked executable for POSIX hosts. No check was removed or weakened.
+- Author checks before initial commit passed format, lint, type checks, six fixture validations, eight unit/API tests and production build. Earlier browser run passed both foundation smoke tests. Those results did not override the clean-SHA failure.
+- Corrective-SHA outcomes are recorded by the verifier in `.verification/<SHA>.json` and supplied with the handoff. Product journey and independent-review gaps above remain pending.
