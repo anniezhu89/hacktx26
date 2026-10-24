@@ -1,7 +1,7 @@
 import { eligibleForExplanation, type Case } from "@labelbridge/contracts";
 import type { ApiClient, ExplanationData } from "../api/client";
 import { DATA_MODE_TEXT } from "../lib/dataMode";
-import { inventedClockTimes } from "../lib/understand";
+import { explanationProblems } from "../lib/understand";
 import type { CaseSession } from "../state/useCaseSession";
 import { useRevisionResult } from "../state/useRevisionResult";
 import { ErrorBanner } from "./ErrorBanner";
@@ -31,12 +31,16 @@ export function Explanation({
   const directions =
     caseData.fields.find((f) => f.key === "exactDirections")?.value ?? "";
   const data = result.data;
-  // Defense in depth: never show text that rewrites the confirmed directions
-  // or adds clock times the label does not state.
-  const mismatch = data !== null && data.originalDirections !== directions;
-  const invented = data
-    ? inventedClockTimes(data.originalDirections, data.simplifiedText)
-    : [];
+  // Defense in depth: never show text for another revision, that rewrites
+  // the confirmed directions, or that changes their meaning.
+  const mismatch =
+    data !== null &&
+    (data.originalDirections !== directions ||
+      data.fieldRevision !== caseData.revision);
+  const problems =
+    data && data.simplifiedText
+      ? explanationProblems(data.originalDirections, data.simplifiedText)
+      : [];
   const blockedByServer =
     result.error?.error.code === "NEEDS_CLARIFICATION" ? result.error : null;
 
@@ -125,10 +129,11 @@ export function Explanation({
                     A plain-language version is not available for these
                     directions. Use the questions below with your pharmacist.
                   </p>
-                ) : invented.length > 0 ? (
+                ) : problems.length > 0 ? (
                   <p className="banner banner-error" role="alert">
-                    The plain-language version added a time that is not on your
-                    label ({invented.join(", ")}), so it was hidden.
+                    The plain-language version was hidden because it changes the
+                    meaning of your label: it {problems.join("; ")}. Use the
+                    exact wording and ask your pharmacist.
                   </p>
                 ) : (
                   <>

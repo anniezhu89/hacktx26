@@ -3,11 +3,7 @@ import { eligibleForExplanation, type Case } from "@labelbridge/contracts";
 import type { ApiClient, SavingsData } from "../api/client";
 import { DATA_MODE_TEXT } from "../lib/dataMode";
 import { FIELD_LABELS } from "../lib/fields";
-import {
-  displayablePrice,
-  productMatch,
-  type SavingsOption,
-} from "../lib/understand";
+import { priceView, type SavingsOption } from "../lib/understand";
 import type { CaseSession } from "../state/useCaseSession";
 import { useRevisionResult } from "../state/useRevisionResult";
 import { ErrorBanner } from "./ErrorBanner";
@@ -46,25 +42,31 @@ function OptionCard({
   option: SavingsOption;
   fields: Case["fields"];
 }) {
-  const price = displayablePrice(option);
-  const match = productMatch(option, fields);
+  const view = priceView(option, fields);
+  const match = view.match;
   return (
     <li className="review-card">
       <h5>{option.sourceTitle}</h5>
       <p className="meta">
         {OPTION_TYPE[option.optionType]} · Retrieved {when(option.retrievedAt)}
       </p>
-      {price ? (
+      {view.kind === "other-product" ? (
         <p>
-          <strong>{price}</strong> — {BASIS[option.priceBasis].toLowerCase()}.
-          Not a pharmacy-confirmed price.
-          {!match.comparable &&
-            " The product details do not fully match yours, so do not compare this price."}
+          Price not shown: it is for a different product (the strength, form or
+          quantity differs from your label).
+        </p>
+      ) : view.kind === "price" ? (
+        <p>
+          <strong>{view.price}</strong> —{" "}
+          {BASIS[option.priceBasis].toLowerCase()}. Not a pharmacy-confirmed
+          price.
+          {!view.comparable &&
+            " Some product details could not be checked, so do not compare this price."}
         </p>
       ) : (
         <p>{BASIS.unknown}.</p>
       )}
-      {option.sourceEvidence && (
+      {option.sourceEvidence && !match.mismatch && (
         <blockquote className="excerpt-text">
           {option.sourceEvidence}
         </blockquote>
@@ -137,7 +139,10 @@ export function Savings({
     const place = location.trim();
     if (!place) found.push("Enter a city or ZIP code.");
     const copayValue = copay.trim() === "" ? undefined : Number(copay);
-    if (copayValue !== undefined && !(copayValue >= 0))
+    if (
+      copayValue !== undefined &&
+      !(Number.isFinite(copayValue) && copayValue >= 0)
+    )
       found.push("Copay must be a number of 0 or more, or left blank.");
     setErrors(found);
     if (found.length) return;
@@ -191,7 +196,7 @@ export function Savings({
               id="savings-location"
               type="text"
               maxLength={100}
-              autoComplete="postal-code"
+              autoComplete="off"
               value={location}
               aria-describedby="savings-location-hint"
               onChange={(e) => setLocation(e.target.value)}
@@ -255,11 +260,11 @@ export function Savings({
           <ErrorBanner error={result.error} retrying={result.pending} />
         )
       )}
+      {options && result.dataMode && (
+        <p className="badge">{DATA_MODE_TEXT[result.dataMode]}</p>
+      )}
       {options && options.length > 0 && (
         <>
-          {result.dataMode && (
-            <p className="badge">{DATA_MODE_TEXT[result.dataMode]}</p>
-          )}
           <p className="hint">
             Results are listed in the order the sources returned them, not
             ranked by price.

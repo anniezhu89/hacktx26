@@ -7,7 +7,9 @@ import {
 import {
   clockTimes,
   displayablePrice,
+  explanationProblems,
   inventedClockTimes,
+  priceView,
   productMatch,
 } from "../../../apps/web/src/lib/understand";
 
@@ -41,6 +43,33 @@ describe("clock-time guard", () => {
     expect(
       inventedClockTimes("Take at 9 PM.", "Take one tablet at 9 p.m."),
     ).toEqual([]);
+  });
+});
+
+describe("explanation meaning guard", () => {
+  const original = "Take one tablet twice daily as needed.";
+  it("accepts verbatim text", () => {
+    expect(explanationProblems(original, original)).toEqual([]);
+  });
+  it("rejects dropping as-needed or a warning", () => {
+    expect(
+      explanationProblems(original, "Take one tablet twice daily."),
+    ).toEqual(["leaves out as needed"]);
+    expect(
+      explanationProblems(
+        "Do not crush. Take one tablet daily.",
+        "Take one tablet daily.",
+      ),
+    ).toEqual(["leaves out a warning (do not)"]);
+  });
+  it("rejects added intervals, times of day and meals", () => {
+    for (const added of [
+      "Take one tablet every 12 hours as needed.",
+      "Take one tablet in the morning and evening as needed.",
+      "Take one tablet with breakfast as needed.",
+      "Take one tablet at 8 AM as needed.",
+    ])
+      expect(explanationProblems(original, added).length).toBeGreaterThan(0);
   });
 });
 
@@ -83,6 +112,44 @@ describe("savings product matching", () => {
     const m = productMatch(option(), confirmedClear());
     expect(m.comparable).toBe(false);
     expect(m.mismatch).toBe(false);
+  });
+});
+
+describe("savings price view", () => {
+  const priced = (matchedProduct: Record<string, string | null>) =>
+    option({
+      amount: 12,
+      currency: "USD",
+      priceBasis: "source_listed",
+      sourceEvidence: "$12.00 for 30 tablets",
+      optionType: "price",
+      matchedProduct: { location: null, ...matchedProduct },
+    });
+  const same = {
+    medicationName: "Fictional Demo Tablet",
+    strength: "0.5 mg",
+    dosageForm: "tablet",
+    quantity: "30",
+  };
+  it("never exposes a price for a different product", () => {
+    for (const change of [
+      { strength: "0.5 mcg" },
+      { dosageForm: "capsule" },
+      { quantity: "60" },
+    ]) {
+      const view = priceView(priced({ ...same, ...change }), confirmedClear());
+      expect(view.kind).toBe("other-product");
+      expect(view).not.toHaveProperty("price");
+    }
+  });
+  it("shows an evidenced price for the same product, flagged when unchecked", () => {
+    expect(priceView(priced(same), confirmedClear())).toMatchObject({
+      kind: "price",
+      comparable: true,
+    });
+    expect(
+      priceView(priced({ ...same, quantity: null }), confirmedClear()),
+    ).toMatchObject({ kind: "price", comparable: false });
   });
 });
 
@@ -153,6 +220,10 @@ describe("explanation and savings in the mock", () => {
       simplifiedText: "Take one tablet twice daily as needed.",
       fieldRevision: 1,
     });
+    // Same question the backend raises for frequency plus "as needed".
+    expect(data.unresolvedQuestions).toEqual([
+      expect.stringContaining("both a frequency and 'as needed'"),
+    ]);
     expect(
       inventedClockTimes(data.originalDirections, data.simplifiedText),
     ).toEqual([]);

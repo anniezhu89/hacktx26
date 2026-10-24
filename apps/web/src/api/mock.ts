@@ -91,6 +91,13 @@ function unextractedFields(): Case["fields"] {
 
 const OPEN = new Set<ReviewRequest["status"]>(["pending", "claimed"]);
 
+// Same patterns as apps/api/src/explain.ts, so mock questions match.
+const COMPLEX =
+  /\b(?:taper|then|decrease|increase|alternate|alternating|day\s*\d|week\s*\d|until|sliding scale)\b/i;
+const AS_NEEDED = /\b(?:as needed|as directed|prn)\b/i;
+const SCHEDULED =
+  /\b(?:once|twice|three times|four times|every|daily|nightly|hourly|a day|per day)\b/i;
+
 export interface MockClient extends ApiClient {
   /** Make the next request fail with this code (tests and demo rehearsal). */
   failNext(code: ErrorCode): void;
@@ -416,17 +423,25 @@ export function createMockClient({
           (f) => f.key === "exactDirections",
         )!.value!;
         const fixture = explanation.parse(explanationFixture);
-        // Fixture mode never paraphrases: directions are returned verbatim.
+        // Mirrors apps/api/src/explain.ts in fixture mode: no paraphrase,
+        // directions returned verbatim, the same pharmacist questions.
+        const complex = COMPLEX.test(directions);
+        const questions: string[] = [];
+        if (complex)
+          questions.push(
+            "These directions change over time or depend on conditions. Ask your pharmacist to walk through each step.",
+          );
+        if (AS_NEEDED.test(directions) && SCHEDULED.test(directions))
+          questions.push(
+            "The directions include both a frequency and 'as needed' (or 'as directed'). Ask your pharmacist when a dose should and should not be taken.",
+          );
         return {
-          ...(fixture.originalDirections === directions
-            ? fixture
-            : {
-                originalDirections: directions,
-                simplifiedText: directions,
-                references: [],
-                unresolvedQuestions: [],
-                eligibleForExplanation: true,
-              }),
+          originalDirections: directions,
+          simplifiedText: complex ? "" : directions,
+          references:
+            fixture.originalDirections === directions ? fixture.references : [],
+          unresolvedQuestions: questions,
+          eligibleForExplanation: !complex,
           fieldRevision: c.revision,
         };
       });
