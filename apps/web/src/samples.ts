@@ -1,0 +1,92 @@
+import { caseSchema, type Case } from "@labelbridge/contracts";
+import clearFixture from "../../../fixtures/clear.json";
+import unreadableFixture from "../../../fixtures/unreadable.json";
+import type { FieldKey } from "./lib/fields";
+
+type Crop = NonNullable<Case["fields"][number]["crop"]>;
+
+export interface SampleLabel {
+  id: "clear" | "unreadable" | "unclear";
+  title: string;
+  description: string;
+  imageUrl: string;
+  imageAlt: string;
+  /** Text version sent to the text-intake route. */
+  text: string;
+  /** Where each field appears on the sample image (normalized 0–1). */
+  crops: Record<FieldKey, Crop>;
+  /** Shared synthetic fixture this sample corresponds to. */
+  fixture: Case;
+}
+
+const crops: Record<FieldKey, Crop> = {
+  medicationName: { x: 0.03, y: 0.2, width: 0.66, height: 0.12 },
+  strength: { x: 0.03, y: 0.34, width: 0.28, height: 0.14 },
+  dosageForm: { x: 0.32, y: 0.34, width: 0.2, height: 0.14 },
+  quantity: { x: 0.03, y: 0.49, width: 0.25, height: 0.1 },
+  exactDirections: { x: 0.03, y: 0.62, width: 0.94, height: 0.12 },
+};
+
+const header = "FICTIONAL DEMO PHARMACY - NOT A REAL PRESCRIPTION";
+
+const clear = caseSchema.parse(clearFixture);
+
+// No shared fixture exists for readable-but-unclear directions yet; derive one
+// from the clear fixture and validate it against the shared schema.
+const unclear = caseSchema.parse({
+  ...clear,
+  id: "synthetic-unclear",
+  status: "reviewing",
+  questions: [
+    "The directions only say “Use as directed.” Ask the pharmacist what that means for you.",
+  ],
+  fields: clear.fields.map((f) =>
+    f.key === "exactDirections"
+      ? {
+          ...f,
+          value: "Use as directed.",
+          rawText: "Use as directed.",
+          evidence: "Use as directed.",
+          reviewState: "unresolved",
+        }
+      : f,
+  ),
+});
+
+export const SAMPLES: SampleLabel[] = [
+  {
+    id: "clear",
+    title: "Clear label",
+    description: "Every field is readable.",
+    imageUrl: "/samples/clear-label.svg",
+    imageAlt:
+      "Fictional label: Fictional Demo Tablet, 0.5 mg tablet, quantity 30, take one tablet twice daily as needed.",
+    text: `${header}\nFictional Demo Tablet\n0.5 mg tablet\nQty: 30\nTake one tablet twice daily as needed.`,
+    crops,
+    fixture: clear,
+  },
+  {
+    id: "unreadable",
+    title: "Smudged strength",
+    description: "The strength is smudged and cannot be read.",
+    imageUrl: "/samples/unreadable-label.svg",
+    imageAlt:
+      "Fictional label: Fictional Demo Tablet, strength smudged and unreadable, tablet, quantity 30, take one tablet twice daily as needed.",
+    text: `${header}\nFictional Demo Tablet\n[smudged] tablet\nQty: 30\nTake one tablet twice daily as needed.`,
+    crops,
+    fixture: caseSchema.parse(unreadableFixture),
+  },
+  {
+    id: "unclear",
+    title: "Unclear directions",
+    description: "Everything is readable, but the directions are vague.",
+    imageUrl: "/samples/unclear-label.svg",
+    imageAlt:
+      "Fictional label: Fictional Demo Tablet, 0.5 mg tablet, quantity 30, use as directed.",
+    text: `${header}\nFictional Demo Tablet\n0.5 mg tablet\nQty: 30\nUse as directed.`,
+    crops,
+    fixture: unclear,
+  },
+];
+
+export const findSample = (id: string) => SAMPLES.find((s) => s.id === id);
