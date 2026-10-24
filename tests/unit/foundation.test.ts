@@ -67,7 +67,7 @@ describe("API foundation", () => {
   });
   it("returns a safe contract error for unfinished routes", async () => {
     const res = await request(createApp())
-      .post("/api/cases")
+      .post("/api/cases/synthetic-clear/plan")
       .send({ text: "fictional" })
       .expect(404);
     expect(apiError.parse(res.body).error.code).toBe("NOT_IMPLEMENTED");

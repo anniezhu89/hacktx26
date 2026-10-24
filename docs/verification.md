@@ -28,3 +28,11 @@ Do not advance a failing commit. Every integration merge requires clean-SHA chec
 
 - SHA `6d6bf9cfba175f7e65a259038b64059d3dfda23d`: clean `npm ci`, full `check` (eight tests) and both browser smoke tests passed. The wrapper then exited 1 during `git worktree remove` because Windows left the directory nonempty. Its PASS report covered checks but did not cover this cleanup error; do not treat the wrapper invocation as successful.
 - Further corrective change retains all isolated verification trees and records their exact paths, avoiding automatic evidence deletion and Windows cleanup failures. The final verifier invocation must exit 0 before handoff; both implementer worktrees will be fast-forwarded to that final SHA while still unused.
+
+## Backend B1 (agent/backend, fixture mode)
+
+Provider capability check: no Meta or SerpApi credentials were present on the backend machine (variables unset, no `.env`), so no live request was attempted. All provider modes remain fixture.
+
+Implemented with backend tests (`tests/unit/api/`): opaque HttpOnly SameSite=Strict demo session cookie via `POST /api/session` (synthetic persona switching, not authentication); workspace and persona checks on case routes; JSON text intake with deterministic verbatim extraction (ambiguous, unit-less, leading-dot/comma decimals and release-type forms stay unresolved; nothing starts confirmed); multipart PNG/JPEG intake validated by signature, dimensions and 5 MB limit, held in memory only, with all fields unresolved because no image provider is configured; `GET`/`DELETE /api/cases/:id`; `PATCH /fields` with revision conflicts; `POST /explanation` returning 422 until critical fields are confirmed, and verbatim directions plus pharmacist questions (no paraphrase, references or schedules) once they are; 60-minute expiry with 410; throttling; metadata-only logs.
+
+Still pending for backend: reviews/claims/responses, savings search, plan and tasks (return `NOT_IMPLEMENTED`), sharing and supporter field filtering, image serving to reviewers, explanation/savings/plan invalidation caches, live providers, restart-recovery UX.
