@@ -14,9 +14,17 @@ import {
   reviewerViewResponse,
   reviewsResponse,
   sessionResponse,
+  planRequest,
+  planResponse,
+  sharedCasesResponse,
+  sharingRequest,
+  taskActionResponse,
+  taskRequest,
   type Case,
   type ReviewRequest,
   type ReviewerView,
+  type SharedCase,
+  type Task,
 } from "@labelbridge/contracts";
 
 export type DataMode = "live" | "cached" | "fixture";
@@ -24,7 +32,16 @@ export type FieldsRequest = ReturnType<typeof fieldsRequest.parse>;
 export type ReviewCreate = ReturnType<typeof reviewCreateRequest.parse>;
 export type ReviewRespond = ReturnType<typeof reviewResponseRequest.parse>;
 export type ErrorCode = ReturnType<typeof apiError.parse>["error"]["code"];
-export type Role = "patient" | "reviewer";
+export type Role = "patient" | "supporter" | "reviewer";
+export type TaskActor = "patient" | "supporter";
+export type SharingRequest = ReturnType<typeof sharingRequest.parse>;
+export type PlanRequest = ReturnType<typeof planRequest.parse>;
+export type PlanData = ReturnType<typeof planResponse.parse>["data"];
+export type TaskRequest = ReturnType<typeof taskRequest.parse>;
+export type TaskActionData = ReturnType<
+  typeof taskActionResponse.parse
+>["data"];
+export type { SharedCase, Task };
 export type ExplanationData = ReturnType<
   typeof explanationResponse.parse
 >["data"];
@@ -94,6 +111,25 @@ export interface ApiClient {
     body: SavingsRequest,
     signal?: AbortSignal,
   ): Promise<Result<SavingsData>>;
+  // Shared support
+  updateSharing(
+    caseId: string,
+    body: SharingRequest,
+    signal?: AbortSignal,
+  ): Promise<CaseResult>;
+  requestPlan(
+    caseId: string,
+    body: PlanRequest,
+    signal?: AbortSignal,
+  ): Promise<Result<PlanData>>;
+  taskAction(
+    caseId: string,
+    taskId: string,
+    body: TaskRequest,
+    as: TaskActor,
+    signal?: AbortSignal,
+  ): Promise<Result<TaskActionData>>;
+  listShared(signal?: AbortSignal): Promise<Result<SharedCase[]>>;
 }
 
 export class ApiError extends Error {
@@ -339,6 +375,43 @@ export function createHttpClient(fetchImpl: Fetch = fetch): ApiClient {
           json("POST", parsed, signal),
         );
         return unwrap((await parseEnvelope(res, explanationResponse)).data);
+      });
+    },
+    updateSharing(caseId, body, signal) {
+      const parsed = sharingRequest.parse(body);
+      return patient(async () =>
+        parseCase(
+          await send(
+            path("cases", caseId, "sharing"),
+            json("PATCH", parsed, signal),
+          ),
+        ),
+      );
+    },
+    requestPlan(caseId, body, signal) {
+      const parsed = planRequest.parse(body);
+      return patient(async () => {
+        const res = await send(
+          path("cases", caseId, "plan"),
+          json("POST", parsed, signal),
+        );
+        return unwrap((await parseEnvelope(res, planResponse)).data);
+      });
+    },
+    taskAction(caseId, taskId, body, as, signal) {
+      const parsed = taskRequest.parse(body);
+      return withSession(as, async () => {
+        const res = await send(
+          path("cases", caseId, "tasks", taskId),
+          json("PATCH", parsed, signal),
+        );
+        return unwrap((await parseEnvelope(res, taskActionResponse)).data);
+      });
+    },
+    listShared(signal) {
+      return withSession("supporter", async () => {
+        const res = await send("/api/shared", get(signal));
+        return unwrap((await parseEnvelope(res, sharedCasesResponse)).data);
       });
     },
     searchSavings(caseId, body, signal) {

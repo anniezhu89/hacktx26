@@ -1,4 +1,8 @@
-import { eligibleForExplanation, type Case } from "@labelbridge/contracts";
+import {
+  eligibleForExplanation,
+  fieldsRevisionOf,
+  type Case,
+} from "@labelbridge/contracts";
 import type { ApiClient, ExplanationData } from "../api/client";
 import { DATA_MODE_TEXT } from "../lib/dataMode";
 import { explanationProblems } from "../lib/understand";
@@ -25,7 +29,7 @@ export function Explanation({
 }) {
   const result = useRevisionResult<ExplanationData>(
     caseData.id,
-    caseData.revision,
+    fieldsRevisionOf(caseData),
   );
   const eligible = eligibleForExplanation(caseData.fields);
   const directions =
@@ -36,7 +40,7 @@ export function Explanation({
   const mismatch =
     data !== null &&
     (data.originalDirections !== directions ||
-      data.fieldRevision !== caseData.revision);
+      data.fieldRevision !== fieldsRevisionOf(caseData));
   const problems =
     data && data.simplifiedText
       ? explanationProblems(data.originalDirections, data.simplifiedText)

@@ -463,3 +463,9 @@ details summary {
     grid-template-columns: 1fr 1fr;
   }
 }
+.review-card.task-accepted {
+  border-left-color: var(--warn-line);
+}
+.review-card.task-completed {
+  border-left-color: var(--ok-line);
+}

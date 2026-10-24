@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
-import { eligibleForExplanation } from "@labelbridge/contracts";
-import type { ApiClient, CaseResult } from "../api/client";
+import {
+  eligibleForExplanation,
+  fieldsRevisionOf,
+} from "@labelbridge/contracts";
+import type { ApiClient, CaseResult, SavingsData } from "../api/client";
 import { DATA_MODE_TEXT } from "../lib/dataMode";
 import {
   FIELD_LABELS,
@@ -10,11 +13,13 @@ import {
 } from "../lib/fields";
 import type { CaseSession, DisplaySource } from "../state/useCaseSession";
 import { usePatientReviews } from "../state/useReviews";
+import { useRevisionResult } from "../state/useRevisionResult";
 import { ErrorBanner } from "./ErrorBanner";
 import { FieldCard } from "./FieldCard";
 import { Explanation } from "./Explanation";
 import { ReadingHelp } from "./ReadingHelp";
 import { Savings } from "./Savings";
+import { SharedSupport } from "./SharedSupport";
 
 function SourcePanel({ source }: { source: DisplaySource }) {
   if (source.kind === "text")
@@ -54,6 +59,7 @@ export function Review({
   const heading = useRef<HTMLHeadingElement>(null);
   const c = result.case;
   const help = usePatientReviews(api, c.id);
+  const savings = useRevisionResult<SavingsData>(c.id, fieldsRevisionOf(c));
   // Focus once per new case; returning from the volunteer view must not move
   // focus, because that change comes from a radio button.
   useEffect(() => {
@@ -173,7 +179,13 @@ export function Review({
       />
 
       <Explanation api={api} caseData={c} session={session} />
-      <Savings api={api} caseData={c} session={session} />
+      <Savings api={api} caseData={c} session={session} result={savings} />
+      <SharedSupport
+        api={api}
+        caseData={c}
+        session={session}
+        savings={savings}
+      />
 
       <div className="actions">
         <button type="button" onClick={onUploadClearer} disabled={busy}>

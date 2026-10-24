@@ -115,16 +115,20 @@ function OptionCard({
   );
 }
 
+export type SavingsResult = ReturnType<typeof useRevisionResult<SavingsData>>;
+
 export function Savings({
   api,
   caseData,
   session,
+  result,
 }: {
   api: ApiClient;
   caseData: Case;
   session: CaseSession;
+  /** Owned by the review screen so the support plan can use chosen options. */
+  result: SavingsResult;
 }) {
-  const result = useRevisionResult<SavingsData>(caseData.id, caseData.revision);
   const [location, setLocation] = useState("");
   const [copay, setCopay] = useState("");
   const [errors, setErrors] = useState<string[]>([]);

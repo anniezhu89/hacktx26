@@ -156,37 +156,73 @@ export function useCaseSession(api: ApiClient) {
     [api],
   );
 
-  const updateFields = useCallback(
-    async (changes: FieldsRequest["changes"], description: string) => {
+  /**
+   * One change to the case at a time. `run` returns the updated case, or
+   * nothing when the server returns only part of it (then the case is
+   * reloaded). Conflicts reload the latest version and explain why.
+   */
+  const mutate = useCallback(
+    async (
+      run: (current: Case, signal: AbortSignal) => Promise<CaseResult | void>,
+      description: string,
+      {
+        taskAction = false,
+        onError,
+      }: {
+        taskAction?: boolean;
+        /** Return true when the caller has handled the error itself. */
+        onError?: (error: ApiError) => boolean;
+      } = {},
+    ): Promise<boolean> => {
       const current = caseRef.current;
-      if (!current || pendingRef.current) return;
+      if (!current || pendingRef.current) return false;
       setNotice(null);
       const { token, signal } = begin("update");
       try {
-        const next = await api.updateFields(
-          current.id,
-          { expectedRevision: current.revision, changes },
-          signal,
-        );
-        if (!finish(token)) return;
-        accept(next);
+        const next = await run(current, signal);
+        if (!finish(token)) return false;
+        if (next) accept(next);
+        else void reload();
         setNotice(description);
+        return true;
       } catch (e) {
-        if (isAbort(e) || !finish(token)) return;
+        if (isAbort(e) || !finish(token)) return false;
         const err = toApiError(e);
+        if (onError?.(err)) return false;
         if (err.code === "REVISION_CONFLICT")
-          return void reload("This label changed after you opened it.");
-        if (err.code === "EXPIRED" || err.code === "NOT_FOUND")
-          return handleGone(err);
-        setError({
-          error: err,
-          retry: err.retryable
-            ? () => void updateFields(changes, description)
-            : null,
-        });
+          void reload("This label changed after you opened it.");
+        else if (
+          taskAction &&
+          (err.code === "STATE_CONFLICT" || err.code === "NOT_FOUND")
+        )
+          void reload("Someone else changed this task first.");
+        else if (err.code === "EXPIRED" || err.code === "NOT_FOUND")
+          handleGone(err);
+        else
+          setError({
+            error: err,
+            retry: err.retryable
+              ? () => void mutate(run, description, { taskAction, onError })
+              : null,
+          });
+        return false;
       }
     },
-    [api, reload],
+    [reload],
+  );
+
+  const updateFields = useCallback(
+    (changes: FieldsRequest["changes"], description: string) =>
+      mutate(
+        (current, signal) =>
+          api.updateFields(
+            current.id,
+            { expectedRevision: current.revision, changes },
+            signal,
+          ),
+        description,
+      ),
+    [api, mutate],
   );
 
   const startOver = useCallback(() => {
@@ -203,6 +239,7 @@ export function useCaseSession(api: ApiClient) {
     expired,
     create,
     updateFields,
+    mutate,
     reload,
     startOver,
     dismissError: () => setError(null),

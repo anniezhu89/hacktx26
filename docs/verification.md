@@ -88,3 +88,15 @@ Known gaps: backend savings search is NOT_IMPLEMENTED; the explanation fixture h
 ## Contract v1.2 (integration, additive)
 
 Added `fieldsRevision` on cases, `ownerRole` on tasks, sharing request, supporter shared-case view and response, task action response, and shared helpers for sharing, plan merging and task actions. Field changes now drop proposed tasks. Ten fixtures validate. Contract tests in `tests/unit/contracts-v1-2.test.ts` cover explicit claims and double-claim rejection, owner-only complete/release, completed tasks that cannot be released, re-planning that keeps accepted tasks, revision versus fieldsRevision, the supporter view's field filtering, and withdrawal. Backend routes for v1.2 are pending (docs/handoff.md).
+
+## Frontend F4 (shared support, fixture mode)
+
+Commits `b097d7e1849eefdd70ed9dade7fc4069f62d52f4` (F4) and `9fea31fab06c627c922ebdf3aa7028942f9d114c` (review fixes), plus contract follow-ups `b37dee429deaf133c4c05546df32d19c81a293fd` and `607559f99e1fd5577c9a7c5c6af9eb0d0403cb0e`: clean verification PASS for each, 94 tests on the frontend branch.
+
+Implemented: the patient chooses exactly which fields a supporter may see and can withdraw, with a note that information already seen cannot be erased and that nothing is sent externally. Practical suggestions come from availability, travel, budget and chosen savings results; they are tasks and tradeoffs only, never doses or schedules. Tasks need an explicit claim, then complete or release; double claims are rejected; re-planning keeps accepted tasks. A supporter persona sees only confirmed values of shared fields, with unshared or unconfirmed values redacted from task text, and acts only on its own tasks. After withdrawal the patient can take back a supporter's task. Explanation and savings are keyed by `fieldsRevision`, so task, plan and sharing changes no longer discard them. The patient view reloads when switching back from another persona.
+
+Review: an independent subagent review found no blocking issues and three should-fix items (missing-route versus missing-case confusion, task text able to reveal unshared values, a supporter task stranded after withdrawal). All were fixed; the re-review found no regressions, and its remaining minor item (single-digit values) was fixed in `607559f`. A human independent review has not been done.
+
+Browser evidence (scripted Chromium, outside the repository): fixture build 21/21 (sharing validation and save, suggestions and tradeoffs, explicit patient claim with the explanation kept, the supporter seeing only the shared field and accepting the ride, patient re-plan keeping the accepted ride, withdrawal with the patient taking the ride back, supporter access removed, 360px layout); F2 26/26 and F3 25/25 regressions. Against the B1 backend, the shared-support and supporter views show "not available on this server yet".
+
+Known gaps: backend routes for sharing, the shared view, plans and tasks; redaction misses paraphrases (guardrail only); the lookbehind regex in redaction needs Safari 16.4 or later; one supporter per workspace by design; persona switching is not authentication.
