@@ -4,7 +4,13 @@ import {
   caseSchema,
   fieldsRequest,
   intakeRequest,
+  reviewCreateRequest,
+  reviewResponse,
+  reviewResponseRequest,
+  reviewerViewResponse,
+  reviewsResponse,
   type Case,
+  type ReviewRequest,
 } from "@labelbridge/contracts";
 import { FIELD_ORDER } from "../lib/fields";
 import { SAMPLES, findSample } from "../samples";
@@ -13,6 +19,7 @@ import {
   type ApiClient,
   type CaseResult,
   type ErrorCode,
+  type Result,
 } from "./client";
 
 const STATUS: Record<ErrorCode, number> = {
@@ -73,24 +80,39 @@ function unextractedFields(): Case["fields"] {
   }));
 }
 
+const OPEN = new Set<ReviewRequest["status"]>(["pending", "claimed"]);
+
 export interface MockClient extends ApiClient {
   /** Make the next request fail with this code (tests and demo rehearsal). */
   failNext(code: ErrorCode): void;
   /** Store access for tests; simulates an edit from elsewhere. */
   store: Map<string, Case>;
+  reviews: Map<string, ReviewRequest>;
 }
+
+type Schema<T> = {
+  parse(v: unknown): {
+    data: T;
+    dataMode: Result<T>["dataMode"];
+    requestId: string;
+  };
+};
 
 export function createMockClient({
   latencyMs = 350,
   now = () => new Date(),
 }: { latencyMs?: number; now?: () => Date } = {}): MockClient {
   const store = new Map<string, Case>();
+  const reviews = new Map<string, ReviewRequest>();
+  // What the patient submitted, kept to build reviewer excerpts.
+  const intake = new Map<string, { imageSrc: string | null; text: boolean }>();
   let pendingFailure: ErrorCode | null = null;
 
-  async function respond(
+  async function respond<T>(
     signal: AbortSignal | undefined,
-    produce: () => Case,
-  ): Promise<CaseResult> {
+    schema: Schema<T>,
+    produce: () => T,
+  ): Promise<Result<T>> {
     if (latencyMs > 0) await new Promise((r) => setTimeout(r, latencyMs));
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
     if (pendingFailure) {
@@ -98,41 +120,85 @@ export function createMockClient({
       pendingFailure = null;
       throw mockError(code);
     }
-    const parsed = caseResponse.parse({
+    const parsed = schema.parse({
       contractVersion: "1",
       requestId: `mock-${crypto.randomUUID()}`,
       dataMode: "fixture",
       data: produce(),
     });
     return {
-      case: structuredClone(parsed.data),
+      data: structuredClone(parsed.data),
       dataMode: parsed.dataMode,
       requestId: parsed.requestId,
     };
   }
+
+  const respondCase = async (
+    signal: AbortSignal | undefined,
+    produce: () => Case,
+  ): Promise<CaseResult> => {
+    const r = await respond(signal, caseResponse, produce);
+    return { case: r.data, dataMode: r.dataMode, requestId: r.requestId };
+  };
 
   function current(id: string) {
     const found = store.get(id);
     if (!found) throw mockError("NOT_FOUND");
     if (now() >= new Date(found.expiresAt)) {
       store.delete(id);
+      for (const [rid, r] of reviews) if (r.caseId === id) reviews.delete(rid);
       throw mockError("EXPIRED");
     }
     return found;
   }
 
+  function review(id: string) {
+    const found = reviews.get(id);
+    if (!found)
+      throw mockError("NOT_FOUND", "This reading request no longer exists.");
+    current(found.caseId);
+    return found;
+  }
+
+  function checkVolunteerChanges(id: string, body: unknown) {
+    const parsed = fieldsRequest.safeParse(body);
+    if (!parsed.success)
+      throw mockError("BAD_REQUEST", "Invalid field change.");
+    for (const change of parsed.data.changes) {
+      if (!change.fromReviewId) continue;
+      const r = reviews.get(change.fromReviewId);
+      const proposal = r?.proposals.find((p) => p.key === change.key);
+      if (
+        !r ||
+        r.caseId !== id ||
+        r.status !== "submitted" ||
+        !proposal ||
+        proposal.visibleText === null ||
+        proposal.visibleText !== change.value
+      )
+        throw mockError(
+          "STATE_CONFLICT",
+          "That volunteer reading does not match this label.",
+        );
+    }
+    return parsed.data;
+  }
+
   return {
     kind: "mock",
     store,
+    reviews,
     failNext(code) {
       pendingFailure = code;
     },
     createCase(source, signal) {
-      return respond(signal, () => {
+      return respondCase(signal, () => {
         let base: Pick<Case, "fields" | "questions" | "status">;
+        let imageSrc: string | null = null;
         if (source.kind === "sample") {
           const sample = findSample(source.sampleId);
           if (!sample) throw mockError("BAD_REQUEST", "Unknown sample label.");
+          imageSrc = sample.imageUrl;
           base = {
             ...sample.fixture,
             fields: sample.fixture.fields.map((f) => ({
@@ -147,6 +213,8 @@ export function createMockClient({
               text: source.text,
               fictionalDataAcknowledged: true,
             });
+          else if (typeof URL.createObjectURL === "function")
+            imageSrc = URL.createObjectURL(source.file);
           const match =
             source.kind === "text" &&
             SAMPLES.find((s) => normalize(s.text) === normalize(source.text));
@@ -170,19 +238,18 @@ export function createMockClient({
           tasks: [],
         });
         store.set(next.id, next);
+        intake.set(next.id, { imageSrc, text: source.kind === "text" });
         return next;
       });
     },
     getCase(id, signal) {
-      return respond(signal, () => current(id));
+      return respondCase(signal, () => current(id));
     },
     updateFields(id, body, signal) {
-      return respond(signal, () => {
-        const parsed = fieldsRequest.safeParse(body);
-        if (!parsed.success)
-          throw mockError("BAD_REQUEST", "Invalid field change.");
+      return respondCase(signal, () => {
+        const parsed = checkVolunteerChanges(id, body);
         try {
-          const { case: next } = applyFieldChanges(current(id), parsed.data);
+          const { case: next } = applyFieldChanges(current(id), parsed);
           store.set(id, next);
           return next;
         } catch (error) {
@@ -196,5 +263,131 @@ export function createMockClient({
         }
       });
     },
+
+    createReview(caseId, body, signal) {
+      return respond(signal, reviewResponse, () => {
+        const parsed = reviewCreateRequest.safeParse(body);
+        if (!parsed.success)
+          throw mockError(
+            "BAD_REQUEST",
+            "Choose at least one field and give consent.",
+          );
+        const c = current(caseId);
+        if (c.revision !== parsed.data.expectedRevision)
+          throw mockError("REVISION_CONFLICT");
+        for (const r of reviews.values()) {
+          if (r.caseId !== caseId || !OPEN.has(r.status)) continue;
+          // Mock policy: a request for an older revision is superseded.
+          if (r.caseRevision < c.revision) r.status = "closed";
+          else
+            throw mockError(
+              "STATE_CONFLICT",
+              "A reading request for this label is already open.",
+            );
+        }
+        const created: ReviewRequest = {
+          id: `mock-review-${crypto.randomUUID()}`,
+          caseId,
+          caseRevision: c.revision,
+          selectedFields: [...new Set(parsed.data.selectedFields)],
+          consentAt: now().toISOString(),
+          status: "pending",
+          proposals: [],
+        };
+        reviews.set(created.id, created);
+        return created;
+      });
+    },
+    listCaseReviews(caseId, signal) {
+      return respond(signal, reviewsResponse, () => {
+        current(caseId);
+        return [...reviews.values()].filter((r) => r.caseId === caseId);
+      });
+    },
+    listReviewQueue(signal) {
+      return respond(signal, reviewsResponse, () =>
+        [...reviews.values()]
+          .filter((r) => OPEN.has(r.status) && store.has(r.caseId))
+          .filter((r) => now() < new Date(store.get(r.caseId)!.expiresAt))
+          .sort((a, b) => a.consentAt.localeCompare(b.consentAt)),
+      );
+    },
+    claimReview(id, signal) {
+      return respond(signal, reviewerViewResponse, () => {
+        const r = review(id);
+        if (r.status !== "pending")
+          throw mockError(
+            "STATE_CONFLICT",
+            "Another volunteer already claimed this request.",
+          );
+        r.status = "claimed";
+        return viewOf(r);
+      });
+    },
+    getReviewerView(id, signal) {
+      return respond(signal, reviewerViewResponse, () => {
+        const r = review(id);
+        if (r.status !== "claimed")
+          throw mockError("FORBIDDEN", "This request is no longer open.");
+        return viewOf(r);
+      });
+    },
+    respondToReview(id, body, signal) {
+      return respond(signal, reviewResponse, () => {
+        const parsed = reviewResponseRequest.safeParse(body);
+        if (!parsed.success)
+          throw mockError("BAD_REQUEST", "That reading could not be sent.");
+        const r = review(id);
+        if (r.status !== "claimed")
+          throw mockError("STATE_CONFLICT", "This request is no longer open.");
+        const c = current(r.caseId);
+        if (
+          parsed.data.expectedRevision !== r.caseRevision ||
+          c.revision !== r.caseRevision
+        )
+          throw mockError(
+            "REVISION_CONFLICT",
+            "The patient changed this label after asking for help, so this reading cannot be sent.",
+          );
+        const { outcome, proposals } = parsed.data;
+        const keys = proposals.map((p) => p.key);
+        if (
+          new Set(keys).size !== keys.length ||
+          keys.some((k) => !r.selectedFields.includes(k)) ||
+          (outcome === "needs_new_image" ? keys.length > 0 : keys.length === 0)
+        )
+          throw mockError(
+            "BAD_REQUEST",
+            "Readings must cover only the requested fields.",
+          );
+        r.status = outcome;
+        r.proposals = proposals;
+        return r;
+      });
+    },
+    reviewImageSrc(view) {
+      return view.imageUrl
+        ? (intake.get(view.review.caseId)?.imageSrc ?? null)
+        : null;
+    },
   };
+
+  function viewOf(r: ReviewRequest) {
+    const c = store.get(r.caseId)!;
+    const source = intake.get(r.caseId);
+    return {
+      review: r,
+      // Label evidence only: never values or rawText. For text intake the
+      // evidence is a verbatim line the patient typed.
+      excerpts: r.selectedFields.map((key) => {
+        const f = c.fields.find((x) => x.key === key)!;
+        return {
+          key,
+          textExcerpt: source?.text && f.rawText !== null ? f.evidence : null,
+          crop: source?.imageSrc ? f.crop : null,
+        };
+      }),
+      imageUrl: source?.imageSrc ? `/api/reviews/${r.id}/image` : null,
+    };
+  }
 }
