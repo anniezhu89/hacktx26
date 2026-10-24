@@ -36,3 +36,23 @@ Provider capability check: no Meta or SerpApi credentials were present on the ba
 Implemented with backend tests (`tests/unit/api/`): opaque HttpOnly SameSite=Strict demo session cookie via `POST /api/session` (synthetic persona switching, not authentication); workspace and persona checks on case routes; JSON text intake with deterministic verbatim extraction (ambiguous, unit-less, leading-dot/comma decimals and release-type forms stay unresolved; nothing starts confirmed); multipart PNG/JPEG intake validated by signature, dimensions and 5 MB limit, held in memory only, with all fields unresolved because no image provider is configured; `GET`/`DELETE /api/cases/:id`; `PATCH /fields` with revision conflicts; `POST /explanation` returning 422 until critical fields are confirmed, and verbatim directions plus pharmacist questions (no paraphrase, references or schedules) once they are; 60-minute expiry with 410; throttling; metadata-only logs.
 
 Still pending for backend: reviews/claims/responses, savings search, plan and tasks (return `NOT_IMPLEMENTED`), sharing and supporter field filtering, image serving to reviewers, explanation/savings/plan invalidation caches, live providers, restart-recovery UX.
+
+- B1 SHA `0549d65ad940e66f8d4ab8f7a9eb531accd2f41c`: clean verification PASS (`npm ci`, `check` with 32 tests, both smoke tests), run during integration before merging.
+
+## Frontend F1 (agent/frontend, fixture mode)
+
+Commits `28b06ad1dde462f24d49d326b34a0dcabc8082f3` (intake and extraction review) and `78faa018c9854a07d83ddbebf35b32787daf8050` (backend session and default HTTP client): clean verification PASS for each.
+
+Implemented in `apps/web` with tests in `tests/unit/web/`: sample, PNG/JPEG upload (type, 5 MB size and signature checks, preview) and text intake with fictional-data acknowledgement; editable fields beside label excerpts and evidence; separate "unreadable", "unclear meaning" and "not read" states; explicit confirmation of critical fields; explanation blocked until all four are confirmed; demo session start and one retry after 401; 409 reload with explanation; expiry/restart recovery message; stale-response guards; large-text toggle. The in-browser fixture mock is opt-in (`VITE_LABELBRIDGE_API=mock`).
+
+Integration evidence (merge into `integration/bootstrap`): combined unit/API suite and a scripted Chromium journey against the B1 backend. The journey covered session and intake, confirming to ready, the smudged-strength block, multipart upload, a second-tab revision conflict, server restart recovery, 360px layout and no console errors; it lives outside the repository and is not part of `npm run smoke`. The merge SHA's clean-verification report is `.verification/<merge SHA>.json`.
+
+Review: the integration merge was performed by the frontend author at the user's request; independent review of F1 and B1 is still pending.
+
+Known gaps after F1:
+
+- Backend text extraction misses a medication name on its own line, takes the dosage form from the name line, and accepts "Use as directed." without flagging it. Backend owns the fix.
+- `LabelField` has no explicit unreadable/unclear marker; the frontend mirrors the backend's unreadable-marker pattern. A contract field is recommended.
+- No shared fixture for readable-but-unclear directions (`fixtures/ambiguous.json` is recommended).
+- Not yet done: screen-reader testing, real browser zoom (only a 640px viewport at 2x), translation and audio.
+- Commit `2867e13` tracks `Microsoft/Windows/PowerShell/ModuleAnalysisCache`, which AGENTS.md says should stay untracked.
