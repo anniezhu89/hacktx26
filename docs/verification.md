@@ -56,3 +56,7 @@ Known gaps after F1:
 - No shared fixture for readable-but-unclear directions (`fixtures/ambiguous.json` is recommended).
 - Not yet done: screen-reader testing, real browser zoom (only a 640px viewport at 2x), translation and audio.
 - Commit `2867e13` tracks `Microsoft/Windows/PowerShell/ModuleAnalysisCache`, which AGENTS.md says should stay untracked.
+
+## Contract v1.1 (integration, additive)
+
+Added reviewer view and excerpt schemas, `reviewerViewResponse`, `fromReviewId` on field changes (volunteer provenance), documented patient review read and reviewer image routes, and three fixtures (nine validated in total). Contract tests in `tests/unit/contracts-v1-1.test.ts` cover strict rejection of AI values in excerpts, excerpts limited to the selected fields, the authorized image path pattern, and provenance. Backend routes for v1.1 are not implemented yet; see docs/handoff.md.

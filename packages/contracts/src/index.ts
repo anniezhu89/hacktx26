@@ -15,24 +15,24 @@ export const reviewState = z.enum([
   "needs_help",
   "unresolved",
 ]);
+export const crop = z
+  .object({
+    x: z.number().min(0).max(1),
+    y: z.number().min(0).max(1),
+    width: z.number().min(0).max(1),
+    height: z.number().min(0).max(1),
+  })
+  .refine(
+    (c) => c.x + c.width <= 1 && c.y + c.height <= 1,
+    "Crop exceeds image",
+  );
 export const labelField = z
   .object({
     key: fieldKey,
     rawText: z.string().nullable(),
     value: z.string().nullable(),
     evidence: z.string(),
-    crop: z
-      .object({
-        x: z.number().min(0).max(1),
-        y: z.number().min(0).max(1),
-        width: z.number().min(0).max(1),
-        height: z.number().min(0).max(1),
-      })
-      .refine(
-        (c) => c.x + c.width <= 1 && c.y + c.height <= 1,
-        "Crop exceeds image",
-      )
-      .nullable(),
+    crop: crop.nullable(),
     provenance: z.enum(["ai", "user", "volunteer"]),
     reviewState,
   })
@@ -149,6 +149,34 @@ export const reviewRequest = z
     proposals: z.array(proposal),
   })
   .strict();
+// v1.1: what a claiming reviewer may see for one selected field. Label
+// evidence only: never extracted values, rawText or other AI suggestions.
+// textExcerpt is verbatim patient-supplied label text (text intake), or null.
+export const reviewerExcerpt = z
+  .object({
+    key: fieldKey,
+    textExcerpt: z.string().nullable(),
+    crop: crop.nullable(),
+  })
+  .strict();
+// v1.1: reviewer's view of a claimed request. imageUrl is a server-issued,
+// authorized path (GET /api/reviews/:id/image, claimer only) or null.
+export const reviewerView = z
+  .object({
+    review: reviewRequest,
+    excerpts: z.array(reviewerExcerpt),
+    imageUrl: z
+      .string()
+      .regex(/^\/api\/reviews\/[^/]+\/image$/)
+      .nullable(),
+  })
+  .strict()
+  .refine(
+    (v) =>
+      v.excerpts.length === v.review.selectedFields.length &&
+      v.excerpts.every((e) => v.review.selectedFields.includes(e.key)),
+    "Excerpts must cover exactly the selected fields",
+  );
 export const expectedRevision = z
   .object({ expectedRevision: z.number().int().nonnegative() })
   .strict();
@@ -162,7 +190,14 @@ export const fieldsRequest = expectedRevision.extend({
   changes: z
     .array(
       z
-        .object({ key: fieldKey, value: z.string().nullable(), reviewState })
+        .object({
+          key: fieldKey,
+          value: z.string().nullable(),
+          reviewState,
+          // v1.1: applying a volunteer proposal. The server must check that
+          // this review belongs to the case and submitted this exact value.
+          fromReviewId: id.optional(),
+        })
         .strict(),
     )
     .min(1),
@@ -260,6 +295,13 @@ export const savingsResponse = envelope(
 );
 export const reviewResponse = envelope(reviewRequest);
 export const reviewsResponse = envelope(z.array(reviewRequest));
+// v1.1 routes (additive; wire contractVersion stays "1"):
+//   GET  /api/cases/:id/reviews   patient owner → reviewsResponse
+//   POST /api/reviews/:id/claim   reviewer      → reviewerViewResponse
+//   GET  /api/reviews/:id         claimer only  → reviewerViewResponse
+//   GET  /api/reviews/:id/image   claimer only  → image/png or image/jpeg
+// GET /api/reviews (queue) stays reviewsResponse: no excerpts before a claim.
+export const reviewerViewResponse = envelope(reviewerView);
 export const planResponse = envelope(
   z
     .object({
@@ -290,6 +332,8 @@ export function eligibleForExplanation(fields: z.infer<typeof labelField>[]) {
   );
 }
 export type Case = z.infer<typeof caseSchema>;
+export type ReviewRequest = z.infer<typeof reviewRequest>;
+export type ReviewerView = z.infer<typeof reviewerView>;
 
 // Storage adapters must replace dependent caches atomically with this revision.
 // Accepted tasks are retained; suggestions must be regenerated separately.
@@ -308,7 +352,9 @@ export function applyFieldChanges(
           ...field,
           value: change.value,
           reviewState: change.reviewState,
-          provenance: "user" as const,
+          provenance: change.fromReviewId
+            ? ("volunteer" as const)
+            : ("user" as const),
         }
       : field;
   });

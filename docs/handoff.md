@@ -18,3 +18,16 @@ Follow AGENTS.md and the plan's required handoff format. Request dependency/cont
 ## Executed foundation checks
 
 Author suite: format/lint/types, six fixtures, eight unit/API tests, production build. Chromium foundation smoke: two tests cover production serving and the development proxy (including a 360px keyboard check). Initial committed-SHA verification exposed Windows CRLF conversion and was marked FAILED; the corrective LF rule must pass clean verification before these branches are created. Consult `.verification/<final-SHA>.json` for the actual committed-SHA status. No live provider calls, hosted CI execution or deployment is claimed.
+
+## Contract v1.1 (additive, for F2 / B3)
+
+`@labelbridge/contracts` 1.1.0. Wire `contractVersion` stays `"1"`: existing payloads remain valid and none of the affected routes were implemented yet. Fixtures added: `ambiguous.json`, `review-submitted.json`, `reviewer-view.json`.
+
+Backend implementer, please implement with B3:
+
+- `GET /api/cases/:id/reviews` (patient owner): `reviewsResponse`, so the patient can see status and proposals.
+- `POST /api/reviews/:id/claim` now returns `reviewerViewResponse` (was `reviewResponse`); add `GET /api/reviews/:id` (claimer only) returning the same.
+- `reviewerView.excerpts` has one entry per selected field: `textExcerpt` is verbatim patient-supplied label text or null, plus `crop`. Never include extracted values, `rawText` or other AI output. The queue (`GET /api/reviews`) shows no excerpts before a claim.
+- `GET /api/reviews/:id/image` (claimer only) serves the stored image; `imageUrl` must be that exact path or null.
+- `PATCH /fields` changes may carry `fromReviewId`. `applyFieldChanges` then records provenance `volunteer`; the server must first check that the review belongs to the case, is `submitted`, and proposed exactly that value for that key, else 409/400. It never auto-confirms.
+- Extraction fixes requested earlier: a medication name on its own line, dosage form taken from the name line, and "Use as directed." should stay unresolved with a question (see `fixtures/ambiguous.json`).

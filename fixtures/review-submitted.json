@@ -1,0 +1,15 @@
+{
+  "id": "synthetic-review",
+  "caseId": "synthetic-unreadable",
+  "caseRevision": 0,
+  "selectedFields": ["strength"],
+  "consentAt": "2026-10-24T12:00:00.000Z",
+  "status": "submitted",
+  "proposals": [
+    {
+      "key": "strength",
+      "visibleText": "0.5 mg",
+      "evidence": "Volunteer read the strength from the enlarged label excerpt."
+    }
+  ]
+}

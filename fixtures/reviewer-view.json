@@ -1,0 +1,19 @@
+{
+  "review": {
+    "id": "synthetic-review",
+    "caseId": "synthetic-unreadable",
+    "caseRevision": 0,
+    "selectedFields": ["strength"],
+    "consentAt": "2026-10-24T12:00:00.000Z",
+    "status": "claimed",
+    "proposals": []
+  },
+  "excerpts": [
+    {
+      "key": "strength",
+      "textExcerpt": null,
+      "crop": { "x": 0.03, "y": 0.34, "width": 0.28, "height": 0.14 }
+    }
+  ],
+  "imageUrl": "/api/reviews/synthetic-review/image"
+}

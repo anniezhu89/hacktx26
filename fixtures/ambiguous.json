@@ -1,0 +1,63 @@
+{
+  "fictionalData": true,
+  "id": "synthetic-ambiguous",
+  "createdAt": "2026-10-24T12:00:00.000Z",
+  "questions": [
+    "The directions only say “Use as directed.” Ask the pharmacist what that means for you."
+  ],
+  "expiresAt": "2026-10-24T13:00:00.000Z",
+  "sharing": {
+    "supporter": false,
+    "fieldKeys": []
+  },
+  "fields": [
+    {
+      "value": "Fictional Demo Tablet",
+      "provenance": "ai",
+      "rawText": "Fictional Demo Tablet",
+      "evidence": "Fictional Demo Tablet",
+      "reviewState": "unreviewed",
+      "key": "medicationName",
+      "crop": null
+    },
+    {
+      "value": "0.5 mg",
+      "provenance": "ai",
+      "rawText": "0.5 mg",
+      "evidence": "0.5 mg",
+      "reviewState": "unreviewed",
+      "key": "strength",
+      "crop": null
+    },
+    {
+      "value": "tablet",
+      "provenance": "ai",
+      "rawText": "tablet",
+      "evidence": "tablet",
+      "reviewState": "unreviewed",
+      "key": "dosageForm",
+      "crop": null
+    },
+    {
+      "value": "30",
+      "provenance": "ai",
+      "rawText": "30",
+      "evidence": "30",
+      "reviewState": "unreviewed",
+      "key": "quantity",
+      "crop": null
+    },
+    {
+      "value": "Use as directed.",
+      "provenance": "ai",
+      "rawText": "Use as directed.",
+      "evidence": "Use as directed.",
+      "reviewState": "unresolved",
+      "key": "exactDirections",
+      "crop": null
+    }
+  ],
+  "revision": 0,
+  "status": "reviewing",
+  "tasks": []
+}
