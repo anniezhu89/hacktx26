@@ -1,0 +1,28 @@
+{
+  "invitations": [
+    {
+      "id": "fixture-invitation",
+      "inviteeName": "Riley",
+      "scope": "reading",
+      "status": "pending",
+      "createdAt": "2026-10-25T12:00:00.000Z",
+      "expiresAt": "2026-10-28T12:00:00.000Z"
+    }
+  ],
+  "connections": [
+    {
+      "id": "fixture-connection",
+      "personName": "Alex",
+      "direction": "supports_me",
+      "scope": "reading_and_tasks",
+      "connectedAt": "2026-10-25T12:00:00.000Z",
+      "grants": [
+        {
+          "caseId": "synthetic-clear",
+          "fieldKeys": ["exactDirections"],
+          "image": false
+        }
+      ]
+    }
+  ]
+}

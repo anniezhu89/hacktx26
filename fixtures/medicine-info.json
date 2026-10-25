@@ -1,0 +1,101 @@
+{
+  "identityKey": "fixture-identity-key",
+  "rxcui": "314076",
+  "language": "en",
+  "mode": "overview",
+  "sources": [
+    {
+      "id": "rxnorm-314076",
+      "kind": "rxnorm",
+      "title": "lisinopril 10 MG Oral Tablet",
+      "url": "https://mor.nlm.nih.gov/RxNav/search?searchBy=RXCUI&searchTerm=314076",
+      "publisher": "RxNorm, U.S. National Library of Medicine",
+      "documentId": "314076",
+      "version": null,
+      "updatedAt": null,
+      "retrievedAt": "2026-10-25T12:00:00.000Z",
+      "language": "en",
+      "scope": "formulation",
+      "reuse": "excerpts_with_attribution"
+    },
+    {
+      "id": "dailymed-fixture-v1",
+      "kind": "dailymed",
+      "title": "FIXTURE LABELING (synthetic passage text)",
+      "url": "https://dailymed.nlm.nih.gov/dailymed/",
+      "publisher": "DailyMed, U.S. National Library of Medicine (labeling text supplied by the manufacturer)",
+      "documentId": "00000000-0000-0000-0000-000000000000",
+      "version": "1",
+      "updatedAt": "2026-10-01",
+      "retrievedAt": "2026-10-25T12:00:00.000Z",
+      "language": "en",
+      "scope": "product",
+      "reuse": "excerpts_with_attribution"
+    }
+  ],
+  "sections": [
+    {
+      "key": "uses",
+      "passages": [
+        {
+          "id": "fixture:1:34067-9:1",
+          "sourceId": "dailymed-fixture-v1",
+          "sectionTitle": "INDICATIONS & USAGE",
+          "text": "Synthetic fixture passage about uses."
+        }
+      ],
+      "summary": {
+        "kind": "ai_summary",
+        "language": "en",
+        "points": [
+          {
+            "text": "Synthetic summary point.",
+            "passageIds": ["fixture:1:34067-9:1"]
+          }
+        ]
+      },
+      "summaryStatus": "ok",
+      "translations": null,
+      "translationStatus": "not_requested"
+    },
+    {
+      "key": "side_effects",
+      "passages": [],
+      "summary": null,
+      "summaryStatus": "no_source",
+      "translations": null,
+      "translationStatus": "not_requested"
+    },
+    {
+      "key": "serious_warnings",
+      "passages": [
+        {
+          "id": "fixture:1:34066-1:1",
+          "sourceId": "dailymed-fixture-v1",
+          "sectionTitle": "BOXED WARNING",
+          "text": "Synthetic fixture warning passage."
+        }
+      ],
+      "summary": null,
+      "summaryStatus": "rejected",
+      "translations": null,
+      "translationStatus": "not_requested"
+    },
+    {
+      "key": "interactions",
+      "passages": [],
+      "summary": null,
+      "summaryStatus": "no_source",
+      "translations": null,
+      "translationStatus": "not_requested"
+    }
+  ],
+  "educationLinks": [],
+  "interactions": {
+    "personalized": {
+      "status": "unavailable",
+      "reason": "No personalized interaction checker is connected."
+    }
+  },
+  "notes": ["Synthetic fixture: not real labeling content."]
+}

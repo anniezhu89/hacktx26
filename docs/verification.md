@@ -262,3 +262,8 @@ Presentation layer of `apps/web` replaced with the Figma Make export's visual de
 Checked: `npm run check` (187 tests, including 10 new in `tests/unit/web/design-flow.test.ts` that drive the real HTTP client against the real API app), `npm run smoke` on isolated ports, and a scripted Chromium walkthrough against this branch's production server in fixture mode at 1440px, 360px and 640x450 (approximating 200% zoom): 111/111 checks. Token contrast pairs computed at or above WCAG AA. No screen-reader session, manual keyboard-only pass, or real-device test was performed; automated checks are not an accessibility audit.
 
 Gaps: the clear sample's text puts the medication name on a line the backend extractor leaves unresolved, so the patient must type it; human reading help, sharing, plans and tasks have no backend routes on `dev` and show as unavailable; the support step's headings skip from h1 to h3 because the kept components use h3; "Start over" clears the case in the browser but does not call `DELETE /api/cases/:id` (the client has no delete method), so the server copy expires after 60 minutes.
+
+## v4 checkpoint verification correction (2026-10-25)
+
+- SHA `db3c5ff6c9f009d91d2e86e5a7f2c4a2c835998d`: **FAILED** clean verification. Author check passed all 229 tests and 12 fixtures, but the two new fixture files were omitted from staging. Clean `npm ci` passed; fixture validation then failed with ENOENT for `fixtures/medicine-info.json`. No smoke result or integration approval is claimed for this SHA.
+- Corrective commit adds `fixtures/medicine-info.json` and `fixtures/circle.json`. Independent review remains pending. Exact corrective-SHA outcomes are stored in `.verification/<SHA>.json`.
