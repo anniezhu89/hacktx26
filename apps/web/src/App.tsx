@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { healthResponse } from "@labelbridge/contracts";
 import { api } from "./api";
 import type { Role } from "./api/client";
-import { Intake, type IntakeMode } from "./components/Intake";
+import { type IntakeMode } from "./components/Intake";
 import { Review } from "./components/Review";
+import { StartScreen } from "./components/StartScreen";
 import { SupporterView } from "./components/SupporterView";
 import { VolunteerView } from "./components/VolunteerView";
 import { useCaseSession } from "./state/useCaseSession";
@@ -150,19 +151,12 @@ export function App() {
             }}
           />
         ) : (
-          <>
-            {session.expired && (
-              <div className="banner banner-error" role="alert">
-                <p>{session.expired}</p>
-              </div>
-            )}
-            <Intake
-              key={intakeMode}
-              session={session}
-              apiKind={api.kind}
-              initialMode={intakeMode}
-            />
-          </>
+          <StartScreen
+            session={session}
+            apiKind={api.kind}
+            intakeMode={intakeMode}
+            expired={session.expired}
+          />
         )}
       </main>
     </>

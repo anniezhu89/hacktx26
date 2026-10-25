@@ -89,7 +89,11 @@ export function Intake({
   const selectedSample = SAMPLES.find((s) => s.id === sampleId)!;
 
   return (
-    <section aria-labelledby="intake-heading" className="stack">
+    <section
+      aria-labelledby="intake-heading"
+      className="stack intake"
+      data-figma-section="intake"
+    >
       <h2 id="intake-heading" tabIndex={-1} ref={heading}>
         Start with a fictional label
       </h2>
@@ -98,7 +102,7 @@ export function Intake({
         — never a real person&apos;s prescription.
       </p>
       <form noValidate onSubmit={submit} className="stack">
-        <fieldset>
+        <fieldset className="intake-mode">
           <legend>How do you want to add the label?</legend>
           <div className="choices">
             {MODES.map((m) => (
@@ -120,7 +124,7 @@ export function Intake({
         </fieldset>
 
         {mode === "sample" && (
-          <fieldset>
+          <fieldset className="sample-labels">
             <legend>Sample labels</legend>
             <div className="sample-grid">
               {SAMPLES.map((s) => (
