@@ -254,3 +254,11 @@ Browser evidence (scripted Chromium at 420px, outside the repository), against t
 Automated checks: `npm run check` PASS, 177 tests.
 
 Known gaps: the extraction gap above is unfixed. The allowlist remains a 30-entry seed, so most real medications are still refused. No amounts, copay comparison or eligibility determination exist. No independent review of this change has been done.
+
+## Figma desktop-01-start (node 4:2)
+
+Date: 2026-10-25.
+
+Implemented the patient start composition against Figma file `OMeydOmZlcXvEUL8TNN9uK` node `4:2` (`desktop-01-start`). The frame is a raster of the start screen; interactive code lives in `StartScreen` + `Intake` + existing app shell (demo header, persona fieldset, health check). Sampled tokens (`#163329`, `#f5f8f6`, `#9fb5aa`, `#dfeee6`, `#fffdf6`, `#687f76`) are reflected in CSS and sample SVGs. `npm run check` PASS (177 tests). Browser screenshots taken at 1440px and 390px against the Vite app.
+
+**Intentional content delta vs the Figma raster:** the design still shows the older invented product “Fictional Demo Tablet” / `0.5 mg`. The live samples keep **Levothyroxine Sodium** / `0.05 mg` from the savings-identity increment so the demo savings path remains identifiable. Layout, spacing, colors, and structure otherwise match the frame. Sibling mobile frame `4:12` (`mobile-02-health`) is out of scope here.

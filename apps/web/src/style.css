@@ -1,9 +1,13 @@
 :root {
+  /* Figma desktop-01-start (4:2) sampled tokens */
   --ink: #163329;
   --muted: #3c5a4e;
+  --muted-soft: #687f76;
   --bg: #f5f8f6;
   --surface: #ffffff;
   --line: #9fb5aa;
+  --label-header: #dfeee6;
+  --label-body: #fffdf6;
   --focus: #286cc6;
   --ok-bg: #e3f3e8;
   --ok-line: #1f6b3a;
@@ -41,11 +45,19 @@ h3 {
   line-height: 1.25;
   margin: 0;
 }
+h1 {
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
 h2 {
   font-size: 1.6rem;
 }
 h3 {
   font-size: 1.25rem;
+}
+.start-screen > * + * {
+  margin-top: 1.25rem;
 }
 p,
 ul {
@@ -172,6 +184,7 @@ legend {
 .sample-card {
   border: 2px solid var(--line);
   background: var(--surface);
+  min-height: 4.5rem;
 }
 .sample-card:has(input:checked) {
   border-color: var(--ink);
@@ -181,25 +194,31 @@ legend {
   display: block;
 }
 .ack {
-  padding: 0.75rem;
+  padding: 0.75rem 1rem;
   border: 2px solid var(--line);
+  border-radius: 0.5rem;
   background: var(--surface);
 }
 .preview {
-  padding: 1rem;
+  padding: 1rem 1.1rem 1.1rem;
   border: 2px dashed var(--line);
   border-radius: 0.5rem;
+  background: transparent;
 }
 .preview > * + * {
-  margin-top: 0.5rem;
+  margin-top: 0.75rem;
+}
+.preview h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
 }
 .label-image {
   display: block;
   width: 100%;
   max-width: 36rem;
   height: auto;
-  border: 1px solid var(--line);
-  background: #fff;
+  border: 1px solid var(--ink);
+  background: var(--label-body);
 }
 .label-text {
   white-space: pre-wrap;
