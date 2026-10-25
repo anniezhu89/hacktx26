@@ -211,14 +211,24 @@ export function hasUnresolvedCritical(fields: Field[]) {
   );
 }
 
-export function unresolvedImageExtraction(): Extraction {
+/**
+ * The explicit "nothing was read" state for an image. `attempted` means a
+ * provider is configured but did not return a usable result; the distinction is
+ * kept so the UI never implies extraction ran when it did not.
+ */
+export function unresolvedImageExtraction(
+  reason: "not_configured" | "attempted" = "not_configured",
+): Extraction {
+  const evidence =
+    reason === "attempted"
+      ? "Not read: the image extraction provider was unavailable."
+      : "Not read: no live image extraction provider is configured (fixture mode).";
   const fields = fieldKey.options.map((key) =>
     labelField.parse({
       key,
       rawText: null,
       value: null,
-      evidence:
-        "Not read: no live image extraction provider is configured (fixture mode).",
+      evidence,
       crop: null,
       provenance: "ai",
       reviewState: "unresolved",

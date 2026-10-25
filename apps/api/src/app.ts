@@ -25,6 +25,7 @@ import {
 } from "./extract";
 import { maxImageBytes, validateImage, type ValidatedImage } from "./image";
 import { rateLimit, type RateLimit } from "./limits";
+import { extractFromImage, type GeminiConfig } from "./providers/gemini";
 import {
   SessionStore,
   loadSession,
@@ -33,13 +34,17 @@ import {
 } from "./session";
 import { CaseStore, caseLifetimeMs, type CaseRecord } from "./store";
 
+export type DataMode = "live" | "cached" | "fixture";
+
 export type LogEntry = {
   requestId: string;
   method: string;
   route: string;
   status: number;
   latencyMs: number;
-  providerMode: "fixture";
+  providerMode: DataMode;
+  /** Adapter-generated reason only; never label or image content. */
+  providerError?: string;
 };
 
 export type AppOptions = {
@@ -48,6 +53,9 @@ export type AppOptions = {
   cases?: CaseStore;
   sessions?: SessionStore;
   limits?: { api?: RateLimit; intake?: RateLimit };
+  /** Null keeps image intake in explicit fixture mode. */
+  extraction?: GeminiConfig | null;
+  fetchImpl?: typeof fetch;
 };
 
 type Parser<T> = { parse: (value: unknown) => T };
@@ -62,7 +70,10 @@ function send<T>(
     schema.parse({
       contractVersion: "1",
       requestId: res.locals.requestId,
-      dataMode: "fixture",
+      // Set by whichever handler actually produced the data; anything that did
+      // not reach a live provider stays "fixture" so fallbacks are never
+      // disguised as live results.
+      dataMode: (res.locals.dataMode as DataMode | undefined) ?? "fixture",
       data,
     }),
   );
@@ -87,6 +98,9 @@ export function createApp(
     options.log ?? ((entry: LogEntry) => console.log(JSON.stringify(entry)));
   const cases = options.cases ?? new CaseStore(now);
   const sessions = options.sessions ?? new SessionStore(now);
+  // Fixture mode unless a caller explicitly opts in, so tests can never reach a
+  // live provider through ambient environment variables.
+  const extraction = options.extraction ?? null;
   const app = express();
   app.disable("x-powered-by");
 
@@ -104,7 +118,11 @@ export function createApp(
         route: req.route ? `/api${req.route.path}` : "unmatched",
         status: res.statusCode,
         latencyMs: Math.round(performance.now() - started),
-        providerMode: "fixture",
+        providerMode:
+          (res.locals.dataMode as DataMode | undefined) ?? "fixture",
+        ...(res.locals.providerError
+          ? { providerError: String(res.locals.providerError) }
+          : {}),
       }),
     );
     next();
@@ -127,11 +145,12 @@ export function createApp(
       healthResponse.parse({
         contractVersion: "1",
         requestId: res.locals.requestId,
-        dataMode: "fixture",
+        // Reports whether a provider is configured, never the credential.
+        dataMode: extraction ? "live" : "fixture",
         data: {
           status: "ok",
           providers: {
-            extraction: "fixture",
+            extraction: extraction ? "live" : "fixture",
             explanation: "fixture",
             search: "fixture",
           },
@@ -234,20 +253,37 @@ export function createApp(
     async (req, res) => {
       const session = requireSession(res, "patient");
       let image: ValidatedImage | null = null;
-      let extraction: Extraction;
+      let result: Extraction;
       if (res.locals.multipart) {
         image = await readImageUpload(req);
-        extraction = unresolvedImageExtraction();
+        const live = extraction
+          ? await extractFromImage(extraction, image, {
+              fetchImpl: options.fetchImpl,
+              // Provider-side reason only: these messages are built by the
+              // adapter and never contain image or label content.
+              onError: (message) => {
+                res.locals.providerError = message;
+              },
+            })
+          : null;
+        // A failed or unconfigured provider falls back to an explicit
+        // unresolved state, and the response stays labelled "fixture".
+        result =
+          live ??
+          unresolvedImageExtraction(
+            extraction ? "attempted" : "not_configured",
+          );
+        if (live) res.locals.dataMode = "live";
       } else if (req.is("application/json")) {
         const { text } = parseBody(intakeRequest, req.body);
-        extraction = extractFromText(text);
+        result = extractFromText(text);
       } else
         throw new ApiError(
           "BAD_REQUEST",
           "Send JSON text intake or a multipart image upload.",
         );
       const record = cases.create({
-        case: newCase(extraction),
+        case: newCase(result),
         workspaceId: session.workspaceId,
         image,
       });

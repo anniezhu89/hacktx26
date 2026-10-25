@@ -288,7 +288,10 @@ export const healthResponse = envelope(
       status: z.literal("ok"),
       providers: z
         .object({
-          extraction: z.literal("fixture"),
+          // v1.3: image extraction can run against a live provider. The other
+          // two stay literal "fixture" until they are actually implemented, so
+          // the contract itself prevents claiming a provider that does not run.
+          extraction: z.enum(["fixture", "live"]),
           explanation: z.literal("fixture"),
           search: z.literal("fixture"),
         })
