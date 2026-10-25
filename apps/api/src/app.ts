@@ -96,6 +96,14 @@ export type AppOptions = {
   accounts?: AccountStore;
   /** Null (the default) turns reference lookups off: no NLM or model calls. */
   medicine?: MedicineOptions | null;
+  /**
+   * Number of reverse proxies in front of the server. Unset trusts none, so a
+   * client cannot spoof X-Forwarded-* headers when the server is reached
+   * directly. Behind a TLS-terminating host, set 1: without it Express reads
+   * every request as plain HTTP, the session cookie loses its Secure flag, and
+   * anything keyed on the client address sees the proxy's address instead.
+   */
+  trustProxy?: number;
 };
 
 type Parser<T> = { parse: (value: unknown) => T };
@@ -139,6 +147,7 @@ export function createApp(
   const savingsCache = new SavingsCache(now);
   const app = express();
   app.disable("x-powered-by");
+  if (options.trustProxy) app.set("trust proxy", options.trustProxy);
 
   app.use("/api", (req, res, next) => {
     const started = performance.now();
