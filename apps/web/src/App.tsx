@@ -104,6 +104,7 @@ export function App() {
   const [textSize, setTextSize] = useState<TextSize>(readTextSize);
   const [persona, setPersona] = useState<Role>("patient");
   const [announcement, setAnnouncement] = useState("");
+  const [helpOpen, setHelpOpen] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -451,42 +452,25 @@ export function App() {
                 How it works
               </a>
             )}
-          {!me && (
-            <div className="persona">
-              <label htmlFor="persona">
-                Demo view <span className="hint-inline">(not a login)</span>
-              </label>
-              <select
-                id="persona"
-                value={persona}
-                onChange={(e) => {
-                  const id = e.target.value as Role;
-                  const label = PERSONAS.find(([r]) => r === id)![1];
-                  setPersona(id);
-                  setScreen("add");
-                  setAnnouncement(`Showing the ${label.toLowerCase()} view.`);
-                  // Other personas may have changed tasks or reviews.
-                  if (id === "patient" && session.result) void session.reload();
-                }}
-              >
-                {PERSONAS.map(([id, label]) => (
-                  <option key={id} value={id}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <a
+            href="#help"
+            className="nav-link"
+            onClick={() => setHelpOpen(true)}
+          >
+            Get help
+          </a>
           <button
             type="button"
             className="text-size"
+            aria-label={`Text size: ${textSize}. Activate to change text size.`}
             aria-pressed={textSize !== "standard"}
             onClick={() =>
               setTextSize((s) => SIZES[(SIZES.indexOf(s) + 1) % SIZES.length])
             }
           >
-            <b aria-hidden="true">Aa</b> Text size:{" "}
-            {textSize[0].toUpperCase() + textSize.slice(1)}
+            <b aria-hidden="true">Aa</b>
+            <span className="text-size-label">Text size</span>
+            <span className="sr-only">: {textSize}</span>
           </button>
           {!account.loading &&
             (me ? (
@@ -504,6 +488,37 @@ export function App() {
             ))}
         </nav>
       </header>
+      {!me && (
+        <nav className="demo-nav" aria-label="Demo workspaces">
+          <div className="shell">
+            <span>Demo views</span>
+            {PERSONAS.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                aria-current={
+                  persona === id && screen === "add" ? "page" : undefined
+                }
+                onClick={() => {
+                  setPersona(id);
+                  setScreen("add");
+                  setAnnouncement(`Showing the ${label.toLowerCase()} view.`);
+                  if (id === "patient" && session.result) void session.reload();
+                }}
+              >
+                {label}
+              </button>
+            ))}
+            <button
+              type="button"
+              aria-current={screen === "auth" ? "page" : undefined}
+              onClick={() => go("auth")}
+            >
+              Account
+            </button>
+          </div>
+        </nav>
+      )}
       {me && (
         <div className="workspace-bar">
           <nav className="shell" aria-label="Personal workspace">
@@ -573,13 +588,24 @@ export function App() {
         <p className="disclaimer">
           A reading aid, not a medical verification service.
         </p>
-        <section
-          className="diagnostics shell"
-          aria-labelledby="diagnostics-heading"
+        <details
+          id="help"
+          className="help-guide shell"
+          open={helpOpen}
+          onToggle={(event) => setHelpOpen(event.currentTarget.open)}
         >
-          <h2 id="diagnostics-heading">Developer diagnostics</h2>
+          <summary>Need help with a label?</summary>
+          <p>
+            Upload a clear photo or type the words exactly as printed. Check
+            each extracted field against the original label. If a field is
+            unreadable, mark it unknown or choose Get help. Medication questions
+            should go to a pharmacist.
+          </p>
+        </details>
+        <details className="diagnostics shell">
+          <summary>Developer diagnostics</summary>
           <HealthCheck />
-        </section>
+        </details>
       </footer>
 
       <ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />

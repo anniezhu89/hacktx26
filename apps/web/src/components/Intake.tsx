@@ -21,28 +21,33 @@ import { ErrorBanner } from "./ErrorBanner";
 import { LabelPreview, type PreviewContent } from "./LabelPreview";
 import { PhotoEditor } from "./PhotoEditor";
 import { Progress } from "./Progress";
+import { DesignIcon, type DesignIconName } from "./DesignIcon";
 
-const MODES: { id: IntakeMode; title: string; detail: string; icon: string }[] =
-  [
-    {
-      id: "sample",
-      title: "Try a sample",
-      detail: "Explore with a fictional label",
-      icon: "▤",
-    },
-    {
-      id: "image",
-      title: "Upload a photo",
-      detail: "PNG or JPEG · Up to 5 MB",
-      icon: "↑",
-    },
-    {
-      id: "text",
-      title: "Type or paste text",
-      detail: "Copy the words from your label",
-      icon: "≡",
-    },
-  ];
+const MODES: {
+  id: IntakeMode;
+  title: string;
+  detail: string;
+  icon: DesignIconName;
+}[] = [
+  {
+    id: "sample",
+    title: "Try a sample",
+    detail: "Explore with a fictional label",
+    icon: "label",
+  },
+  {
+    id: "image",
+    title: "Upload a photo",
+    detail: "PNG or JPEG · Up to 5 MB",
+    icon: "photo",
+  },
+  {
+    id: "text",
+    title: "Type or paste text",
+    detail: "Copy the words from your label",
+    icon: "text",
+  },
+];
 
 /** Object URL for a chosen file, revoked when the file changes or unmounts. */
 function useObjectUrl(file: File | null) {
@@ -78,6 +83,7 @@ export function Intake({
   const cameraInput = useRef<HTMLInputElement>(null);
   const [converted, setConverted] = useState(false);
   const pending = session.pending === "create";
+  const canSubmit = intakeProblems(draft).length === 0;
   const fileUrl = useObjectUrl(draft.file);
   const serverPhotoError =
     draft.mode === "image" && session.error
@@ -202,7 +208,7 @@ export function Intake({
                   }}
                 />
                 <span className="method-icon" aria-hidden="true">
-                  {m.icon}
+                  <DesignIcon name={m.icon} />
                 </span>
                 <span className="method-text">
                   <b>{m.title}</b>
@@ -449,16 +455,24 @@ export function Intake({
             <button
               type="submit"
               className="primary"
-              disabled={pending || checkingFile}
+              disabled={pending || checkingFile || !canSubmit}
               aria-describedby="submit-hint"
             >
               {pending ? "Checking label details…" : "Check label details"}
               <span aria-hidden="true">→</span>
             </button>
-            <p id="submit-hint" className="hint" aria-live="polite">
+            <p
+              id="submit-hint"
+              className={`hint ${!canSubmit ? "requirement" : ""}`}
+              aria-live="polite"
+            >
               {pending
                 ? "Reading the label. This can take a few seconds."
-                : "Nothing is read or saved until you continue."}
+                : !draft.acknowledged
+                  ? "Confirm this is fictional demo information to continue."
+                  : !canSubmit
+                    ? "Add fictional label information to continue."
+                    : "Nothing is read or saved until you continue."}
             </p>
           </aside>
         </div>
@@ -474,7 +488,7 @@ export function Intake({
         </h2>
         <article>
           <span className="benefit-icon sage" aria-hidden="true">
-            ◫
+            <DesignIcon name="book" />
           </span>
           <div>
             <h3>Easy-to-read text</h3>
@@ -483,7 +497,7 @@ export function Intake({
         </article>
         <article>
           <span className="benefit-icon lavender" aria-hidden="true">
-            ⌕
+            <DesignIcon name="search" />
           </span>
           <div>
             <h3>Check every detail</h3>
@@ -492,7 +506,7 @@ export function Intake({
         </article>
         <article>
           <span className="benefit-icon peach" aria-hidden="true">
-            ○
+            <DesignIcon name="share" />
           </span>
           <div>
             <h3>Choose what you share</h3>

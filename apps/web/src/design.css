@@ -1,0 +1,408 @@
+/* Presentation adapted from the supplied Figma Make reference.
+   Existing components remain responsible for API state and safety rules. */
+:root {
+  --radius-md: 0.667rem;
+  --radius-lg: 0.889rem;
+  --design-width: 73.333rem;
+}
+.shell,
+.disclaimer {
+  width: min(var(--design-width), calc(100% - 2.667rem));
+}
+.nav {
+  min-height: 4.333rem;
+  padding-block: 0;
+}
+.nav-tools {
+  gap: 0.5rem 1.5rem;
+}
+.nav-link {
+  text-decoration: none;
+  font-weight: 400;
+}
+.nav-link:hover {
+  text-decoration: underline;
+}
+.brand {
+  font-size: 1.389rem;
+}
+.text-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 400;
+}
+.text-size b {
+  margin-right: 0.2rem;
+}
+.demo-nav {
+  border-block: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.demo-nav > .shell {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0 0.45rem;
+  min-height: 2.333rem;
+}
+.demo-nav span {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-right: 0.2rem;
+}
+.demo-nav button {
+  min-height: 2.333rem;
+  padding: 0.3rem 0.55rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  font-size: 0.75rem;
+}
+.demo-nav button[aria-current="page"] {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+.hero {
+  padding: 1.1rem 0 0.833rem;
+}
+.hero > p {
+  max-width: 52rem;
+}
+.progress {
+  max-width: 33.333rem;
+}
+.progress-label {
+  font-weight: 700;
+}
+.intake {
+  padding: 1.278rem 1.444rem;
+}
+.card-title {
+  font-size: clamp(1.444rem, 3vw, 1.889rem);
+  font-weight: 400;
+}
+.methods legend {
+  margin-bottom: 0.667rem;
+}
+.method-grid {
+  gap: 0.889rem;
+  padding-bottom: 0.889rem;
+}
+.method-card {
+  gap: 1.111rem;
+  padding: 1rem 1.5rem;
+}
+.method-card.selected {
+  padding: calc(1rem - 1px) calc(1.5rem - 1px);
+}
+.method-icon {
+  flex: 0 0 2.444rem;
+  display: grid;
+  place-items: center;
+}
+.design-icon {
+  display: block;
+  width: 1em;
+  height: 1em;
+}
+.method-icon .design-icon {
+  width: 2.222rem;
+  height: 2.222rem;
+}
+.method-text b {
+  font-size: 1.056rem;
+}
+.method-text small {
+  font-size: 0.889rem;
+}
+.intake-content {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr);
+  column-gap: 1.556rem;
+  padding-top: 0.667rem;
+}
+.intake-main {
+  gap: 0.667rem;
+}
+.sample-options {
+  gap: 0.556rem;
+}
+.sample-option {
+  flex: 0 1 auto;
+  min-width: 10.556rem;
+  min-height: 2.667rem;
+  padding: 0.444rem 0.833rem;
+}
+.sample-option.selected {
+  padding: calc(0.444rem - 1px) calc(0.833rem - 1px);
+}
+.sample-option b {
+  font-weight: 400;
+}
+/* Keep sample descriptions available to screen readers without expanding pills. */
+.sample-option small {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.preview-title {
+  font-size: 0.833rem;
+}
+.label-stage {
+  border-radius: 0.778rem;
+}
+.control-panel {
+  padding-left: 1.556rem;
+}
+.control-panel h2 {
+  font-size: 1.5rem;
+  font-weight: 400;
+}
+.control-panel > p:not(.hint) {
+  margin-top: 0.278rem;
+}
+.control-panel .primary {
+  margin-top: 0.5rem;
+}
+.requirement {
+  color: var(--color-error-text);
+  font-size: 0.778rem;
+}
+.benefits {
+  gap: 0.889rem;
+  padding-block: 1rem;
+}
+.benefits article {
+  padding: 0.889rem 1.333rem;
+  gap: 1.111rem;
+  border-radius: 0.722rem;
+}
+.benefits h3 {
+  font-size: 1rem;
+}
+.benefits p {
+  font-size: 0.833rem;
+}
+.benefit-icon .design-icon {
+  width: 1.667rem;
+  height: 1.667rem;
+}
+.review-head {
+  padding-top: 1.389rem;
+}
+.review-layout {
+  gap: 1.444rem;
+}
+.review-progress,
+.safety-note {
+  padding: 1rem;
+  border-radius: 0.722rem;
+}
+.field-card {
+  padding: 1.111rem;
+  border-radius: 0.778rem;
+}
+.field-head h3 {
+  font-size: 1.278rem;
+}
+.field-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.2fr) minmax(0, 0.8fr);
+  gap: 0.444rem;
+}
+.field-actions button {
+  min-width: 0;
+  font-size: 0.85rem;
+}
+.workspace {
+  padding-block: 1.778rem 2.667rem;
+}
+.page-head {
+  gap: 1.333rem;
+  margin-bottom: 1.333rem;
+}
+.workspace-card {
+  padding: 1.333rem;
+  border-radius: 0.889rem;
+}
+.workspace-card h2 {
+  font-size: 1.333rem;
+}
+.workspace-bar nav button {
+  min-height: 3.111rem;
+}
+.auth-card {
+  padding: 2rem;
+}
+.site-footer {
+  padding: 0 0 1rem;
+}
+.disclaimer {
+  margin-bottom: 0.6rem;
+  font-size: 0.722rem;
+}
+.help-guide,
+.diagnostics {
+  max-width: var(--design-width);
+  border: 0;
+  padding: 0.3rem 0;
+  background: transparent;
+  font-size: 0.778rem;
+  color: var(--color-text-muted);
+}
+.help-guide summary,
+.diagnostics summary {
+  min-height: 2.444rem;
+  width: fit-content;
+  margin-inline: auto;
+  padding: 0.5rem;
+  cursor: pointer;
+}
+.help-guide {
+  scroll-margin-top: 1rem;
+}
+.help-guide[open] {
+  padding-bottom: 1rem;
+}
+.help-guide p {
+  max-width: 42rem;
+  margin: 0.4rem auto;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 1rem;
+}
+.diagnostics[open] .health {
+  padding: 0.7rem 1rem;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+@media (max-width: 54rem) {
+  .shell,
+  .disclaimer {
+    width: min(calc(100% - 1.556rem), 37.778rem);
+  }
+  .nav {
+    min-height: 3.778rem;
+    padding-block: 0.3rem;
+    gap: 0.3rem 0.5rem;
+  }
+  .nav-tools {
+    gap: 0.4rem;
+  }
+  .brand {
+    font-size: 1.111rem;
+  }
+  .hero {
+    padding-top: 0.556rem;
+  }
+  .hero h1 {
+    font-size: 1.944rem;
+  }
+  .hero > p {
+    font-size: 0.944rem;
+  }
+  .progress-label {
+    font-size: 0.722rem;
+    max-width: 5rem;
+  }
+  .intake {
+    padding: 1.111rem 0.889rem;
+  }
+  .method-grid {
+    gap: 0.556rem;
+  }
+  .method-card {
+    min-height: 4.778rem;
+  }
+  .sample-options {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sample-option {
+    min-width: 0;
+  }
+  .control-panel {
+    padding: 1rem 0 0;
+  }
+  .benefits {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .field-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .demo-nav span {
+    flex-basis: 100%;
+    text-align: center;
+    padding-top: 0.25rem;
+  }
+  .demo-nav button {
+    font-size: 0.722rem;
+    padding-inline: 0.4rem;
+  }
+}
+@media (max-width: 35rem) {
+  .text-size-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .text-size {
+    padding-inline: 0.5rem;
+  }
+  .text-size b {
+    margin: 0;
+  }
+  .nav-tools > .secondary {
+    padding-inline: 0.65rem;
+  }
+}
+@media (max-width: 28rem) {
+  .shell,
+  .disclaimer {
+    width: calc(100% - 1.111rem);
+  }
+  .brand {
+    font-size: 1rem;
+    gap: 0.4rem;
+    padding-right: 0;
+  }
+  .brand-mark {
+    width: 2.5rem;
+    margin-right: -0.2rem;
+  }
+  .hero h1 {
+    font-size: 1.722rem;
+  }
+  .method-card {
+    padding: 0.778rem 1rem;
+  }
+  .method-card.selected {
+    padding: calc(0.778rem - 1px) calc(1rem - 1px);
+  }
+  .label-stage {
+    padding: 0.7rem 0.45rem;
+  }
+  .benefits article {
+    padding: 0.778rem 0.889rem;
+  }
+  .field-card {
+    padding: 0.889rem 0.722rem;
+  }
+  .auth-card {
+    padding: 1.389rem 1rem;
+  }
+}

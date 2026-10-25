@@ -11,7 +11,13 @@ export default defineConfig({
     {
       command: "npm start",
       url: `${baseURL}/api/health`,
-      env: { PORT: String(port) },
+      env: {
+        PORT: String(port),
+        GEMINI_API_KEY: "",
+        SERPAPI_API_KEY: "",
+        LABELBRIDGE_REFERENCE_LOOKUPS: "0",
+        VITE_LABELBRIDGE_API: "http",
+      },
       reuseExistingServer: false,
     },
     {

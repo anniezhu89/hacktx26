@@ -21,11 +21,11 @@ export interface SampleLabel {
 }
 
 const crops: Record<FieldKey, Crop> = {
-  medicationName: { x: 0.03, y: 0.2, width: 0.66, height: 0.12 },
-  strength: { x: 0.03, y: 0.34, width: 0.28, height: 0.14 },
-  dosageForm: { x: 0.32, y: 0.34, width: 0.2, height: 0.14 },
-  quantity: { x: 0.03, y: 0.49, width: 0.25, height: 0.1 },
-  exactDirections: { x: 0.03, y: 0.62, width: 0.94, height: 0.12 },
+  medicationName: { x: 0.04, y: 0.29, width: 0.82, height: 0.14 },
+  strength: { x: 0.04, y: 0.44, width: 0.21, height: 0.14 },
+  dosageForm: { x: 0.25, y: 0.44, width: 0.2, height: 0.14 },
+  quantity: { x: 0.04, y: 0.59, width: 0.45, height: 0.14 },
+  exactDirections: { x: 0.04, y: 0.75, width: 0.82, height: 0.15 },
 };
 
 const header = "FICTIONAL DEMO PHARMACY - NOT A REAL PRESCRIPTION";

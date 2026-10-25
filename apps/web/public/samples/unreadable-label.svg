@@ -1,14 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400" font-family="Arial, Helvetica, sans-serif">
-  <defs><filter id="smudge"><feGaussianBlur stdDeviation="7"/></filter></defs>
-  <rect width="600" height="400" fill="#fffdf6" stroke="#163329" stroke-width="4"/>
-  <rect x="2" y="2" width="596" height="56" fill="#dfeee6"/>
-  <text x="30" y="38" font-size="22" font-weight="bold" fill="#163329">FICTIONAL DEMO PHARMACY</text>
-  <text x="570" y="38" font-size="15" fill="#163329" text-anchor="end">NOT A REAL PRESCRIPTION</text>
-  <text x="30" y="118" font-size="36" font-weight="bold" fill="#111">Levothyroxine Sodium</text>
-  <g filter="url(#smudge)"><text x="30" y="176" font-size="30" font-weight="bold" fill="#111">0.05 mg</text><rect x="22" y="140" width="150" height="48" fill="#8a7f6a" opacity="0.55"/></g>
-  <text x="200" y="176" font-size="30" fill="#111">tablet</text>
-  <text x="30" y="226" font-size="26" fill="#111">Qty: 30</text>
-  <text x="30" y="290" font-size="27" fill="#111">Take one tablet twice daily as needed.</text>
-  <line x1="30" y1="340" x2="570" y2="340" stroke="#9fb5aa" stroke-width="2"/>
-  <text x="30" y="374" font-size="16" fill="#3c5a4e">Synthetic sample label for the LabelBridge demo only</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="250" viewBox="0 0 600 250" font-family="Arial, Helvetica, sans-serif" fill="#191d1b">
+  <defs><filter id="smudge"><feGaussianBlur stdDeviation="7"/></filter><pattern id="barcode" width="5" height="5" patternUnits="userSpaceOnUse"><rect width="2" height="5" fill="#222"/></pattern></defs>
+  <rect x="1" y="1" width="598" height="248" rx="16" fill="#fff" stroke="#d7d5d0"/>
+  <rect x="28" y="22" width="544" height="40" rx="6" fill="#f7a2a2"/>
+  <text x="300" y="48" text-anchor="middle" font-size="20" font-weight="bold" letter-spacing="2">FICTIONAL DEMO LABEL</text>
+  <text x="32" y="99" font-size="30" font-weight="bold">Levothyroxine Sodium</text>
+  <g filter="url(#smudge)"><text x="32" y="136" font-size="24">0.05 mg</text><rect x="26" y="111" width="112" height="35" fill="#968a73" opacity="0.7"/></g>
+  <text x="155" y="136" font-size="24">tablet</text>
+  <text x="32" y="173" font-size="22">Quantity: 30</text>
+  <text x="32" y="212" font-size="18">Take one tablet twice daily as needed.</text>
+  <rect x="544" y="83" width="26" height="115" fill="url(#barcode)"/>
 </svg>
