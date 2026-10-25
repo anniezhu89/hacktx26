@@ -11,6 +11,10 @@ export type DemoSession = {
   actorId: string;
   role: Role;
   lastSeen: number;
+  /** Set while signed in to a demo account; its workspace replaces the guest one. */
+  accountId?: string;
+  /** The guest workspace from before sign-in, so its cases can be attached. */
+  guestWorkspaceId?: string;
 };
 
 export const sessionCookie = "lb_demo_session";
@@ -53,6 +57,25 @@ export class SessionStore {
     };
     this.sessions.set(session.id, session);
     return session;
+  }
+
+  /** New cookie value for the same session (on sign-in and sign-out). */
+  rotate(session: DemoSession) {
+    this.sessions.delete(session.id);
+    session.id = randomBytes(32).toString("base64url");
+    this.sessions.set(session.id, session);
+    return session;
+  }
+
+  /** Signs every session of a deleted account out to a fresh guest workspace. */
+  detachAccount(accountId: string) {
+    for (const session of this.sessions.values())
+      if (session.accountId === accountId) {
+        session.accountId = undefined;
+        session.guestWorkspaceId = undefined;
+        session.workspaceId = randomUUID();
+        session.role = "patient";
+      }
   }
 
   sweep() {

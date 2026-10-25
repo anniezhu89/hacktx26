@@ -16,10 +16,12 @@ function ReadingForm({
   view,
   imageSrc,
   queue,
+  onRelease,
 }: {
   view: ReviewerView;
   imageSrc: string | null;
   queue: ReviewerQueue;
+  onRelease?: (reviewId: string) => Promise<void>;
 }) {
   const [entries, setEntries] = useState<Record<string, Entry>>({});
   const [note, setNote] = useState("");
@@ -102,7 +104,7 @@ function ReadingForm({
               ) : (
                 <img
                   src={imageSrc}
-                  alt={`The fictional label image (no excerpt marked for ${label})`}
+                  alt={`The section of the fictional label the patient chose to share for ${label}`}
                   className="label-image"
                 />
               ))}
@@ -183,15 +185,38 @@ function ReadingForm({
         >
           Ask for a clearer image
         </button>
-        <button type="button" disabled={sending} onClick={queue.close}>
-          Back to the list
-        </button>
+        {onRelease ? (
+          <button
+            type="button"
+            disabled={sending}
+            onClick={() => void onRelease(view.review.id)}
+          >
+            Release this request for someone else
+          </button>
+        ) : (
+          <button type="button" disabled={sending} onClick={queue.close}>
+            Back to the list
+          </button>
+        )}
       </div>
+      {view.review.claimExpiresAt && (
+        <p className="hint">
+          Your claim lapses at {time(view.review.claimExpiresAt)} if you do not
+          answer; the request then returns to the queue.
+        </p>
+      )}
     </form>
   );
 }
 
-export function VolunteerView({ queue }: { queue: ReviewerQueue }) {
+export function VolunteerView({
+  queue,
+  onRelease,
+}: {
+  queue: ReviewerQueue;
+  /** Hands a claimed request back to the queue (account volunteers). */
+  onRelease?: (reviewId: string) => Promise<void>;
+}) {
   // Only a failed queue load means the server lacks these routes; a missing
   // request during a claim is an ordinary error.
   const unavailable =
@@ -228,6 +253,7 @@ export function VolunteerView({ queue }: { queue: ReviewerQueue }) {
               view={queue.active}
               imageSrc={queue.imageSrc}
               queue={queue}
+              onRelease={onRelease}
             />
           ) : (
             <section aria-labelledby="queue-heading" className="stack-sm">

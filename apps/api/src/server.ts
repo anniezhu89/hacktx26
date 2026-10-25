@@ -1,5 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { AccountStore, approvedVolunteersFromEnv } from "./accounts";
 import { createApp } from "./app";
 import { geminiConfig } from "./providers/gemini";
 import { serpApiConfig } from "./providers/serpapi";
@@ -28,14 +29,32 @@ setInterval(() => {
 
 const extraction = geminiConfig();
 const search = serpApiConfig();
-createApp(undefined, { cases, sessions, extraction, search }).listen(
-  port,
-  "127.0.0.1",
-  () =>
-    console.log(
-      `LabelBridge server: http://127.0.0.1:${port} — image extraction: ` +
-        `${extraction ? `live (${extraction.model})` : "fixture (no GEMINI_API_KEY)"}; ` +
-        `pharmacy search: ${search ? "live" : "fixture (no SERPAPI_API_KEY)"}; ` +
-        `in-memory demo state is lost on restart`,
-    ),
+const approvedVolunteers = approvedVolunteersFromEnv();
+const accounts = new AccountStore(Date.now, approvedVolunteers);
+// NLM services need no key. Summaries and translations of manufacturer
+// labeling stay off unless the operator confirms reuse is permitted.
+const allowDerivatives =
+  process.env.LABELBRIDGE_ALLOW_LABELING_DERIVATIVES === "1";
+const medicine =
+  process.env.LABELBRIDGE_REFERENCE_LOOKUPS === "0"
+    ? null
+    : { fetchImpl: fetch, ai: extraction, allowDerivatives };
+setInterval(() => accounts.sweep(), 60 * 60_000).unref();
+createApp(undefined, {
+  cases,
+  sessions,
+  extraction,
+  search,
+  accounts,
+  medicine,
+}).listen(port, "127.0.0.1", () =>
+  console.log(
+    `LabelBridge server: http://127.0.0.1:${port} — image extraction: ` +
+      `${extraction ? `live (${extraction.model})` : "fixture (no GEMINI_API_KEY)"}; ` +
+      `pharmacy search: ${search ? "live" : "fixture (no SERPAPI_API_KEY)"}; ` +
+      `reference lookups: ${medicine ? "on (NLM)" : "off"}; ` +
+      `AI labeling summaries: ${medicine && allowDerivatives && extraction ? "on" : "off"}; ` +
+      `approved volunteers: ${approvedVolunteers.size}; ` +
+      `in-memory demo state is lost on restart`,
+  ),
 );

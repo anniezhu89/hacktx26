@@ -111,22 +111,69 @@ export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 type FileLike = Pick<File, "name" | "size" | "type" | "slice">;
 
-function hasImageSignature(bytes: Uint8Array) {
-  const png = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-  const jpeg = [0xff, 0xd8, 0xff];
-  const starts = (sig: number[]) => sig.every((b, i) => bytes[i] === b);
-  return starts(png) || starts(jpeg);
+const startsWith = (bytes: Uint8Array, sig: number[], offset = 0) =>
+  bytes.length >= offset + sig.length &&
+  sig.every((b, i) => bytes[offset + i] === b);
+const ascii = (text: string) => [...text].map((c) => c.charCodeAt(0));
+
+/** Format named by the file's leading bytes; names and MIME types are ignored. */
+export function sniffImageFormat(bytes: Uint8Array) {
+  if (startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+    return "png";
+  if (startsWith(bytes, [0xff, 0xd8, 0xff])) return "jpeg";
+  if (startsWith(bytes, ascii("RIFF")) && startsWith(bytes, ascii("WEBP"), 8))
+    return "webp";
+  if (startsWith(bytes, ascii("GIF8"))) return "gif";
+  if (startsWith(bytes, ascii("ftyp"), 4)) {
+    const brand = String.fromCharCode(...bytes.slice(8, 12));
+    if (/^avi[fs]$/.test(brand)) return "avif";
+    if (/^(?:hei[cxms]|hev[cxms]|mif1|msf1)$/.test(brand)) return "heic";
+  }
+  if (startsWith(bytes, ascii("BM"))) return "bmp";
+  if (
+    startsWith(bytes, [0x49, 0x49, 0x2a, 0x00]) ||
+    startsWith(bytes, [0x4d, 0x4d, 0x00, 0x2a])
+  )
+    return "tiff";
+  if (startsWith(bytes, ascii("%PDF"))) return "pdf";
+  // SVG, HTML and XML are text: skip a byte-order mark and leading spaces.
+  const text = String.fromCharCode(...bytes).replace(
+    /^\uFEFF|^\xEF\xBB\xBF/,
+    "",
+  );
+  if (/^\s*</.test(text)) return "markup";
+  return "unknown";
 }
 
-/** Returns a patient-facing error message, or null if the file is usable. */
+const OTHER_FORMAT: Record<string, string> = {
+  webp: "a WebP image",
+  gif: "a GIF image",
+  heic: "an HEIC photo (the iPhone camera format)",
+  avif: "an AVIF image",
+  bmp: "a BMP image",
+  tiff: "a TIFF image",
+  pdf: "a PDF document",
+  markup: "a text-based file such as SVG or HTML",
+};
+
+const extensionOf = (name: string) => name.match(/\.([a-z0-9]+)$/i)?.[1];
+
+/**
+ * Returns a patient-facing error message, or null if the file is usable.
+ * The decision rests on the file's contents; the server checks them again,
+ * together with the image dimensions, after upload.
+ */
 export async function validateImageFile(file: FileLike) {
-  if (file.size === 0) return "That file is empty. Choose a PNG or JPEG photo.";
+  if (file.size === 0)
+    return "That file is empty (0 bytes). Choose a PNG or JPEG image.";
   if (file.size > MAX_IMAGE_BYTES)
     return `That file is ${(file.size / 1024 / 1024).toFixed(1)} MB. The limit is 5 MB; try a smaller photo or a screenshot.`;
-  if (!["image/png", "image/jpeg"].includes(file.type))
-    return "Only PNG or JPEG photos are accepted. Other file types, including SVG and PDF, cannot be used.";
-  const head = new Uint8Array(await file.slice(0, 8).arrayBuffer());
-  if (!hasImageSignature(head))
-    return "This file does not look like a real PNG or JPEG image. Try taking a new photo.";
-  return null;
+  const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  const format = sniffImageFormat(head);
+  if (format === "png" || format === "jpeg") return null;
+  const ext = extensionOf(file.name);
+  const named = ext ? `, even though its name ends in .${ext}` : "";
+  if (format !== "unknown")
+    return `This file is ${OTHER_FORMAT[format]}, not a PNG or JPEG${named}. Save or export it as PNG or JPEG, then choose that copy.`;
+  return `This file's contents are not PNG or JPEG image data${named}, so it cannot be used. If it opens as a picture on your device, save or export it as PNG or JPEG and choose that copy.`;
 }

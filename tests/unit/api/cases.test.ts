@@ -439,12 +439,12 @@ describe("expiry, deletion, limits and logging", () => {
       ]);
   });
 
-  it("distinguishes unknown routes from pending contract routes", async () => {
+  it("distinguishes unknown routes from contract routes that need a session", async () => {
     expect(
       errorCode((await request(app).get("/api/nope").expect(404)).body),
     ).toBe("NOT_FOUND");
     expect(
-      errorCode((await request(app).get("/api/reviews").expect(404)).body),
-    ).toBe("NOT_IMPLEMENTED");
+      errorCode((await request(app).get("/api/reviews").expect(401)).body),
+    ).toBe("UNAUTHORIZED");
   });
 });

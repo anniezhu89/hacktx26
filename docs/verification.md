@@ -254,3 +254,11 @@ Browser evidence (scripted Chromium at 420px, outside the repository), against t
 Automated checks: `npm run check` PASS, 177 tests.
 
 Known gaps: the extraction gap above is unfixed. The allowlist remains a 30-entry seed, so most real medications are still refused. No amounts, copay comparison or eligibility determination exist. No independent review of this change has been done.
+
+## Frontend design refresh (branch design/labelbridge-refresh, uncommitted)
+
+Presentation layer of `apps/web` replaced with the Figma Make export's visual design (tokens, hero, three-step flow, method cards, zoomable label preview, sticky review layout, support step). The typed API client, state hooks, field rules, samples and support components were kept, so the same backend routes and contracts are used. Requested by the project owner; `apps/web` normally belongs to the frontend implementer, so this needs that owner's or the integrator's review.
+
+Checked: `npm run check` (187 tests, including 10 new in `tests/unit/web/design-flow.test.ts` that drive the real HTTP client against the real API app), `npm run smoke` on isolated ports, and a scripted Chromium walkthrough against this branch's production server in fixture mode at 1440px, 360px and 640x450 (approximating 200% zoom): 111/111 checks. Token contrast pairs computed at or above WCAG AA. No screen-reader session, manual keyboard-only pass, or real-device test was performed; automated checks are not an accessibility audit.
+
+Gaps: the clear sample's text puts the medication name on a line the backend extractor leaves unresolved, so the patient must type it; human reading help, sharing, plans and tasks have no backend routes on `dev` and show as unavailable; the support step's headings skip from h1 to h3 because the kept components use h3; "Start over" clears the case in the browser but does not call `DELETE /api/cases/:id` (the client has no delete method), so the server copy expires after 60 minutes.

@@ -130,6 +130,32 @@ export function useCaseSession(api: ApiClient) {
     [api],
   );
 
+  /** Opens a saved label from the account; no local preview is available. */
+  const open = useCallback(
+    async (caseId: string) => {
+      if (pendingRef.current) return;
+      setExpired(null);
+      setNotice(null);
+      const { token, signal } = begin("create");
+      try {
+        const next = await api.getCase(caseId, signal);
+        if (!finish(token)) return;
+        revokePreview(sourceRef.current);
+        sourceRef.current = null;
+        caseRef.current = null;
+        setSource(null);
+        accept(next);
+      } catch (e) {
+        if (isAbort(e) || !finish(token)) return;
+        const err = toApiError(e);
+        if (err.code === "EXPIRED" || err.code === "NOT_FOUND")
+          return handleGone(err);
+        setError({ error: err, retry: () => void open(caseId) });
+      }
+    },
+    [api],
+  );
+
   const reload = useCallback(
     async (conflictMessage?: string) => {
       const current = caseRef.current;
@@ -238,6 +264,7 @@ export function useCaseSession(api: ApiClient) {
     notice,
     expired,
     create,
+    open,
     updateFields,
     mutate,
     reload,

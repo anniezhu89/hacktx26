@@ -65,13 +65,19 @@ describe("API foundation", () => {
     expect(healthResponse.parse(res.body).dataMode).toBe("fixture");
     expect(JSON.stringify(res.body)).not.toMatch(/token|secret|apiKey/i);
   });
-  it("returns a safe contract error for unfinished routes", async () => {
-    const res = await request(createApp())
-      .post("/api/cases/synthetic-clear/plan")
+  it("returns a safe contract error for unknown and unauthorized routes", async () => {
+    const unknown = await request(createApp())
+      .post("/api/not-a-route")
       .send({ text: "fictional" })
       .expect(404);
-    expect(apiError.parse(res.body).error.code).toBe("NOT_IMPLEMENTED");
-    expect(JSON.stringify(res.body)).not.toContain("fictional");
+    expect(apiError.parse(unknown.body).error.code).toBe("NOT_FOUND");
+    const anonymous = await request(createApp())
+      .post("/api/cases/synthetic-clear/plan")
+      .send({ text: "fictional" })
+      .expect(401);
+    expect(apiError.parse(anonymous.body).error.code).toBe("UNAUTHORIZED");
+    for (const res of [unknown, anonymous])
+      expect(JSON.stringify(res.body)).not.toContain("fictional");
   });
 });
 

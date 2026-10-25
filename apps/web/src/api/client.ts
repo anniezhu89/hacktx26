@@ -168,7 +168,7 @@ type Fetch = typeof fetch;
 
 type Envelope = { safeParse(body: unknown): { success: boolean } };
 
-async function parseEnvelope<S extends Envelope>(
+export async function parseEnvelope<S extends Envelope>(
   response: Response,
   schema: S,
 ): Promise<Extract<ReturnType<S["safeParse"]>, { success: true }>> {

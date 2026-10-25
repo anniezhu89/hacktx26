@@ -10,6 +10,8 @@ export type CaseRecord = {
   case: Case;
   workspaceId: string;
   image: ValidatedImage | null;
+  /** v1.6: set when the patient explicitly saved the label to an account. */
+  savedAt?: number;
 };
 
 export type Lookup =
@@ -57,6 +59,14 @@ export class CaseStore {
 
   delete(id: string) {
     return this.cases.delete(id);
+  }
+
+  /** Live (unexpired) records in a workspace. */
+  inWorkspace(workspaceId: string) {
+    this.sweep();
+    return [...this.cases.values()].filter(
+      (r) => r.workspaceId === workspaceId,
+    );
   }
 
   sweep() {

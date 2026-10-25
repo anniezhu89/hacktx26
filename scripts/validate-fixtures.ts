@@ -7,6 +7,8 @@ import {
   reviewerView,
   sharedCase,
   planResponse,
+  medicineInfo,
+  circleResponse,
   eligibleForExplanation,
 } from "../packages/contracts/src/index";
 const read = (name: string) =>
@@ -23,4 +25,11 @@ planResponse.parse(read("plan"));
 for (const name of ["unreadable", "ambiguous"])
   if (eligibleForExplanation(caseSchema.parse(read(name)).fields))
     throw new Error(`${name} fixture must block explanation`);
-console.log("All ten synthetic contract fixtures validated.");
+medicineInfo.parse(read("medicine-info"));
+circleResponse.shape.data.parse(read("circle"));
+// A citation to a passage that was not retrieved must be rejected.
+const badCitation = read("medicine-info");
+badCitation.sections[0].summary.points[0].passageIds = ["invented-id"];
+if (medicineInfo.safeParse(badCitation).success)
+  throw new Error("medicine-info must reject invented citations");
+console.log("All twelve synthetic contract fixtures validated.");

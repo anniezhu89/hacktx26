@@ -71,12 +71,14 @@ describe("image validation", () => {
       await validateImageFile(
         new File(["<svg/>"], "a.png", { type: "image/png" }),
       ),
-    ).toMatch(/does not look like/);
+    ).toMatch(
+      /SVG or HTML, not a PNG or JPEG, even though its name ends in \.png/,
+    );
     expect(
       await validateImageFile(
         new File(["<svg/>"], "a.svg", { type: "image/svg+xml" }),
       ),
-    ).toMatch(/Only PNG or JPEG/);
+    ).toMatch(/not a PNG or JPEG/);
     expect(
       await validateImageFile(
         new File([new Uint8Array(5 * 1024 * 1024 + 1)], "big.png", {

@@ -48,6 +48,17 @@ import {
   setSessionCookie,
 } from "./session";
 import { CaseStore, caseLifetimeMs, type CaseRecord } from "./store";
+import { AccountStore } from "./accounts";
+import { CircleStore } from "./circle";
+import { ReviewStore } from "./reviews";
+import { registerAccountRoutes } from "./routes/accounts";
+import { registerCircleRoutes } from "./routes/circle";
+import type { RouteContext } from "./routes/context";
+import {
+  registerMedicineRoutes,
+  type MedicineOptions,
+} from "./routes/medicine";
+import { registerReviewRoutes } from "./routes/reviews";
 
 export type DataMode = "live" | "cached" | "fixture";
 
@@ -78,6 +89,10 @@ export type AppOptions = {
   /** Null keeps the pharmacy lookup in explicit fixture mode. */
   search?: SerpApiConfig | null;
   fetchImpl?: typeof fetch;
+  /** v1.6 stores (tests inject them to control time and state). */
+  accounts?: AccountStore;
+  /** Null (the default) turns reference lookups off: no NLM or model calls. */
+  medicine?: MedicineOptions | null;
 };
 
 type Parser<T> = { parse: (value: unknown) => T };
@@ -101,15 +116,6 @@ function send<T>(
   );
 }
 
-const pendingRoutes: [string, string][] = [
-  ["post", "/api/cases/:id/reviews"],
-  ["get", "/api/reviews"],
-  ["post", "/api/reviews/:id/claim"],
-  ["post", "/api/reviews/:id/response"],
-  ["post", "/api/cases/:id/plan"],
-  ["patch", "/api/cases/:id/tasks/:taskId"],
-];
-
 export function createApp(
   webRoot = path.resolve("apps/web/dist"),
   options: AppOptions = {},
@@ -119,6 +125,9 @@ export function createApp(
     options.log ?? ((entry: LogEntry) => console.log(JSON.stringify(entry)));
   const cases = options.cases ?? new CaseStore(now);
   const sessions = options.sessions ?? new SessionStore(now);
+  const accounts = options.accounts ?? new AccountStore(now);
+  const circle = new CircleStore(now);
+  const reviews = new ReviewStore(now);
   // Fixture mode unless a caller explicitly opts in, so tests can never reach a
   // live provider through ambient environment variables.
   const extraction = options.extraction ?? null;
@@ -204,7 +213,9 @@ export function createApp(
       );
     if (lookup.record.workspaceId !== session.workspaceId)
       throw new ApiError("FORBIDDEN", "This case belongs to another session.");
-    if (session.role !== "patient")
+    // Personas matter only for the anonymous demo. An account reaches its own
+    // workspace whatever view it last used; others get access via grants.
+    if (session.role !== "patient" && !session.accountId)
       throw new ApiError(
         "FORBIDDEN",
         "Only the patient persona can access this case.",
@@ -451,24 +462,41 @@ export function createApp(
     },
   );
 
+  // Deleting a case also deletes its reading requests, shares and lookups.
+  let forgetMedicine: (caseId: string) => void = () => undefined;
+  const deleteCase = (caseId: string) => {
+    cases.delete(caseId);
+    reviews.forgetCase(caseId);
+    circle.forgetCase(caseId);
+    forgetMedicine(caseId);
+  };
+
   api.delete("/cases/:id", (req, res) => {
     ownedCase(res, req.params.id);
-    cases.delete(req.params.id);
+    deleteCase(req.params.id);
     send(res, deletionResponse, { deleted: true });
   });
 
-  for (const [method, route] of pendingRoutes)
-    api[method as "get" | "post" | "patch"](
-      route.replace(/^\/api/, ""),
-      (_req, res) =>
-        sendError(
-          res,
-          new ApiError(
-            "NOT_IMPLEMENTED",
-            "This endpoint is not implemented yet.",
-          ),
-        ),
-    );
+  const ctx: RouteContext = {
+    api,
+    now,
+    cases,
+    sessions,
+    accounts,
+    circle,
+    reviews,
+    send,
+    ownedCase,
+    readImageUpload,
+    deleteCase,
+  };
+  registerAccountRoutes(ctx);
+  registerCircleRoutes(ctx);
+  registerReviewRoutes(ctx);
+  forgetMedicine = registerMedicineRoutes(
+    ctx,
+    options.medicine ?? null,
+  ).forgetCase;
 
   api.use((_req, res) =>
     sendError(res, new ApiError("NOT_FOUND", "Unknown API route.")),

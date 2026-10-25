@@ -51,15 +51,24 @@ export const task = z
     // v1.2: which demo persona accepted the task (one person per role per
     // synthetic workspace). Absent or null while proposed.
     ownerRole: z.enum(["patient", "supporter"]).nullable().optional(),
-    status: z.enum(["proposed", "accepted", "completed"]),
+    // v1.6: "declined" (a supporter said no to a suggestion) and "canceled"
+    // (the patient withdrew it) are terminal and kept for the record.
+    status: z.enum([
+      "proposed",
+      "accepted",
+      "completed",
+      "declined",
+      "canceled",
+    ]),
     acceptedAt: timestamp.nullable(),
   })
   .strict()
   .refine(
     (t) =>
-      t.status === "proposed"
+      t.status === "proposed" || t.status === "declined"
         ? t.owner === null && t.acceptedAt === null && !t.ownerRole
-        : t.owner !== null && t.acceptedAt !== null,
+        : t.status === "canceled" ||
+          (t.owner !== null && t.acceptedAt !== null),
     "Task acceptance requires explicit owner and timestamp",
   );
 export const caseSchema = z
@@ -170,6 +179,8 @@ export const reviewRequest = z
       "closed",
     ]),
     proposals: z.array(proposal),
+    // v1.6: a claim lapses at this time unless a response arrives first.
+    claimExpiresAt: timestamp.nullable().optional(),
   })
   .strict();
 // v1.1: what a claiming reviewer may see for one selected field. Label
@@ -260,7 +271,8 @@ export const planRequest = expectedRevision.extend({
   selectedOptionIds: z.array(id),
 });
 export const taskRequest = expectedRevision.extend({
-  action: z.enum(["claim", "complete", "release"]),
+  // v1.6: supporters may decline a suggestion; the patient may cancel one.
+  action: z.enum(["claim", "complete", "release", "decline", "cancel"]),
 });
 export const demoSessionRequest = z
   .object({ role: z.enum(["patient", "supporter", "reviewer"]) })
@@ -636,7 +648,17 @@ export function applyTaskAction(
     existing.ownerRole === "supporter" &&
     !current.sharing.supporter;
   let updated: Task;
-  if (parsed.action === "claim") {
+  if (parsed.action === "decline") {
+    if (actor.role !== "supporter") throw new Error("FORBIDDEN");
+    if (existing.status !== "proposed") throw new Error("STATE_CONFLICT");
+    updated = { ...existing, status: "declined" };
+  } else if (parsed.action === "cancel") {
+    // Only the patient withdraws a task; a supporter releases or declines.
+    if (actor.role !== "patient") throw new Error("FORBIDDEN");
+    if (existing.status !== "proposed" && existing.status !== "accepted")
+      throw new Error("STATE_CONFLICT");
+    updated = { ...existing, status: "canceled" };
+  } else if (parsed.action === "claim") {
     if (existing.status !== "proposed") throw new Error("STATE_CONFLICT");
     updated = {
       ...existing,
@@ -646,10 +668,9 @@ export function applyTaskAction(
       acceptedAt: now,
     };
   } else {
-    if (existing.status === "proposed") throw new Error("STATE_CONFLICT");
+    if (existing.status !== "accepted") throw new Error("STATE_CONFLICT");
     if (!mine && !(parsed.action === "release" && strandedSupporterTask))
       throw new Error("FORBIDDEN");
-    if (existing.status === "completed") throw new Error("STATE_CONFLICT");
     updated =
       parsed.action === "complete"
         ? { ...existing, status: "completed" }
@@ -668,3 +689,368 @@ export function applyTaskAction(
   });
   return { case: next, task: next.tasks.find((t) => t.id === taskId)! };
 }
+
+// ---------------------------------------------------------------------------
+// v1.6 (additive; wire contractVersion stays "1"). Demo accounts, support
+// circle, volunteer reading and the medicine translator.
+//
+//   Accounts (in-memory demo accounts; not production authentication)
+//     GET    /api/account                      → accountResponse (null = guest)
+//     POST   /api/account/signup   signupRequest      → accountResponse
+//     POST   /api/account/signin   signinRequest      → accountResponse
+//     POST   /api/account/signout                     → accountResponse
+//     PATCH  /api/account          preferencesRequest → accountResponse
+//     DELETE /api/account          deleteAccountRequest → deletionResponse
+//     POST   /api/account/recovery recoveryRequest    → 503 PROVIDER_UNAVAILABLE
+//     GET    /api/account/labels                      → savedLabelsResponse
+//     POST   /api/account/labels   attachRequest      → savedLabelsResponse
+//   Support circle (accounts only)
+//     GET    /api/circle                              → circleResponse
+//     POST   /api/circle/invitations inviteRequest    → invitationCreatedResponse
+//     DELETE /api/circle/invitations/:id              → circleResponse
+//     POST   /api/circle/accept    acceptInviteRequest → circleResponse
+//     PUT    /api/circle/connections/:id/grants/:caseId grantRequest → circleResponse
+//     DELETE /api/circle/connections/:id/grants/:caseId → circleResponse
+//     DELETE /api/circle/connections/:id              → circleResponse
+//     GET    /api/circle/shared                       → sharedLabelsResponse
+//     GET    /api/circle/shared/:caseId/image          (image grant only)
+//     PATCH  /api/circle/shared/:caseId/tasks/:taskId  taskRequest → taskActionResponse
+//   Volunteer (approved accounts; queue excludes their own requests)
+//     PUT    /api/reviews/:id/image   multipart image (patient, before claim)
+//     POST   /api/reviews/:id/release | /cancel       → reviewResponse
+//   Medicine translator (patient; confirmed critical fields required)
+//     POST   /api/cases/:id/medicine/candidates medicineLookupRequest
+//     POST   /api/cases/:id/medicine/confirm    medicineConfirmRequest
+//     POST   /api/cases/:id/medicine/info       medicineInfoRequest
+// ---------------------------------------------------------------------------
+
+export const textSize = z.enum(["standard", "larger", "largest"]);
+/** Optional workspaces. Reading and saving one's own labels is always on. */
+export const workspaceUses = z
+  .object({ supporter: z.boolean(), volunteer: z.boolean() })
+  .strict();
+export const account = z
+  .object({
+    id,
+    name: z.string().min(1).max(60),
+    email: z.string().email(),
+    uses: workspaceUses,
+    textSize,
+    // Server-side approval state; choosing "volunteer" only requests it.
+    volunteerStatus: z.enum(["not_requested", "pending", "approved"]),
+    createdAt: timestamp,
+    /** Plain statement of where data lives and when it is deleted. */
+    retention: z.string(),
+  })
+  .strict();
+const email = z.string().trim().toLowerCase().email().max(200);
+export const signupRequest = z
+  .object({
+    name: z.string().trim().min(1).max(60),
+    email,
+    password: z.string().min(10).max(200),
+    uses: workspaceUses,
+    textSize: textSize.optional(),
+    fictionalDataAcknowledged: z.literal(true),
+  })
+  .strict();
+export const signinRequest = z
+  .object({ email, password: z.string().min(1).max(200) })
+  .strict();
+export const preferencesRequest = z
+  .object({
+    name: z.string().trim().min(1).max(60).optional(),
+    uses: workspaceUses.optional(),
+    textSize: textSize.optional(),
+  })
+  .strict();
+export const deleteAccountRequest = z
+  .object({
+    password: z.string().min(1).max(200),
+    confirm: z.literal("DELETE"),
+  })
+  .strict();
+export const recoveryRequest = z.object({ email }).strict();
+export const accountResponse = envelope(
+  z.object({ account: account.nullable() }).strict(),
+);
+export const savedLabel = z
+  .object({
+    caseId: id,
+    /** The confirmed medication name, or null while it is unconfirmed. */
+    title: z.string().nullable(),
+    status: z.enum(["reviewing", "needs_help", "ready"]),
+    confirmedRequired: z.number().int().min(0).max(4),
+    savedAt: timestamp,
+    expiresAt: timestamp,
+  })
+  .strict();
+export const savedLabelsResponse = envelope(z.array(savedLabel));
+export const attachRequest = z.object({ caseId: id }).strict();
+
+export const supportScope = z.enum(["reading_and_tasks", "reading", "tasks"]);
+export const invitation = z
+  .object({
+    id,
+    inviteeName: z.string().min(1).max(60),
+    scope: supportScope,
+    status: z.enum(["pending", "accepted", "declined", "revoked", "expired"]),
+    createdAt: timestamp,
+    expiresAt: timestamp,
+  })
+  .strict();
+export const inviteRequest = z
+  .object({
+    inviteeName: z.string().trim().min(1).max(60),
+    scope: supportScope,
+  })
+  .strict();
+/** The single-use code is returned once, to the inviter, at creation only. */
+export const invitationCreatedResponse = envelope(
+  z.object({ invitation, code: z.string().min(16) }).strict(),
+);
+export const acceptInviteRequest = z
+  .object({
+    code: z.string().trim().min(16).max(80),
+    decision: z.enum(["accept", "decline"]),
+  })
+  .strict();
+export const grant = z
+  .object({
+    caseId: id,
+    fieldKeys: z
+      .array(fieldKey)
+      .refine((k) => new Set(k).size === k.length, "Duplicate field"),
+    /** Separate from fields: the original label image. */
+    image: z.boolean(),
+  })
+  .strict();
+export const grantRequest = grant.omit({ caseId: true });
+export const connection = z
+  .object({
+    id,
+    personName: z.string(),
+    direction: z.enum(["supports_me", "i_support"]),
+    scope: supportScope,
+    connectedAt: timestamp,
+    /** Only for "supports_me": what this person can see. */
+    grants: z.array(grant),
+  })
+  .strict();
+export const circleResponse = envelope(
+  z
+    .object({
+      invitations: z.array(invitation),
+      connections: z.array(connection),
+    })
+    .strict(),
+);
+/** A supporter's view of one label: granted, confirmed values only. */
+export const sharedLabel = z
+  .object({
+    connectionId: id,
+    ownerName: z.string(),
+    caseId: id,
+    revision: z.number().int().nonnegative(),
+    fields: z.array(sharedField),
+    imageUrl: z
+      .string()
+      .regex(/^\/api\/circle\/shared\/[^/]+\/image$/)
+      .nullable(),
+    tasksAllowed: z.boolean(),
+    tasks: z.array(task),
+  })
+  .strict();
+export const sharedLabelsResponse = envelope(z.array(sharedLabel));
+
+// Medicine translator -------------------------------------------------------
+export const medicineSectionKey = z.enum([
+  "uses",
+  "side_effects",
+  "serious_warnings",
+  "interactions",
+]);
+export const language = z.enum(["en", "es"]);
+export const explanationMode = z.enum(["overview", "terms", "source"]);
+export const medicineLookupRequest = expectedRevision.extend({
+  // The patient agreed to send name, strength and form (nothing else) to NLM.
+  consent: z.literal(true),
+});
+const matchCheck = z
+  .object({
+    attribute: z.enum(["ingredients", "strength", "form", "release", "brand"]),
+    status: z.enum([
+      "match",
+      "equivalent",
+      "mismatch",
+      "not_on_label",
+      "unknown",
+    ]),
+    note: z.string(),
+  })
+  .strict();
+export const medicineCandidate = z
+  .object({
+    rxcui: z.string().regex(/^\d+$/),
+    name: z.string(),
+    termType: z.enum(["SCD", "SBD", "GPCK", "BPCK"]),
+    brand: z.string().nullable(),
+    ingredients: z.array(z.string()).min(1),
+    /** Strength per unit (per tablet, per mL...). Never the prescribed dose. */
+    strengths: z.array(z.string()),
+    doseForm: z.string().nullable(),
+    releaseType: z.enum(["immediate", "extended", "delayed", "not_stated"]),
+    match: z
+      .object({
+        level: z.enum(["formulation", "partial", "conflict"]),
+        checks: z.array(matchCheck),
+      })
+      .strict(),
+  })
+  .strict();
+export const medicineQuery = z
+  .object({
+    medicationName: z.string(),
+    strength: z.string(),
+    dosageForm: z.string(),
+  })
+  .strict();
+export const medicineCandidatesResponse = envelope(
+  z
+    .object({
+      status: z.enum(["single", "multiple", "none", "unavailable"]),
+      /** Changes whenever name, strength or form change. */
+      identityKey: z.string(),
+      query: medicineQuery,
+      candidates: z.array(medicineCandidate),
+      retrievedAt: timestamp,
+    })
+    .strict(),
+);
+export const medicineConfirmRequest = expectedRevision.extend({
+  rxcui: z.string().regex(/^\d+$/),
+  identityKey: z.string().min(1),
+  compared: z.literal(true),
+});
+export const medicineIdentityResponse = envelope(
+  z
+    .object({
+      identityKey: z.string(),
+      identity: medicineCandidate,
+      confirmedAt: timestamp,
+    })
+    .strict(),
+);
+export const medicineInfoRequest = expectedRevision.extend({
+  language,
+  mode: explanationMode,
+});
+export const medicineSource = z
+  .object({
+    id,
+    kind: z.enum(["rxnorm", "dailymed", "medlineplus"]),
+    title: z.string(),
+    url: z.string().url(),
+    publisher: z.string(),
+    documentId: z.string().nullable(),
+    version: z.string().nullable(),
+    updatedAt: z.string().nullable(),
+    retrievedAt: timestamp,
+    language,
+    /** What the content describes: an ingredient, a formulation or one product. */
+    scope: z.enum(["ingredient", "formulation", "product"]),
+    reuse: z.enum(["excerpts_with_attribution", "link_only"]),
+  })
+  .strict();
+export const sourcePassage = z
+  .object({
+    id: z.string().min(1),
+    sourceId: id,
+    sectionTitle: z.string(),
+    text: z.string().min(1),
+  })
+  .strict();
+const derivedStatus = z.enum([
+  "ok",
+  "not_requested",
+  "disabled",
+  "unavailable",
+  "rejected",
+  "no_source",
+]);
+export const aiPoint = z
+  .object({ text: z.string().min(1), passageIds: z.array(z.string()).min(1) })
+  .strict();
+export const medicineSection = z
+  .object({
+    key: medicineSectionKey,
+    passages: z.array(sourcePassage),
+    summary: z
+      .object({
+        kind: z.literal("ai_summary"),
+        language,
+        points: z.array(aiPoint).min(1),
+      })
+      .strict()
+      .nullable(),
+    summaryStatus: derivedStatus,
+    translations: z
+      .array(z.object({ passageId: z.string(), text: z.string() }).strict())
+      .nullable(),
+    translationStatus: derivedStatus,
+  })
+  .strict()
+  .refine((s) => {
+    const ids = new Set(s.passages.map((p) => p.id));
+    return (
+      (s.summary?.points ?? []).every((p) =>
+        p.passageIds.every((i) => ids.has(i)),
+      ) && (s.translations ?? []).every((t) => ids.has(t.passageId))
+    );
+  }, "Every citation must name a passage retrieved for this section");
+export const medicineInfo = z
+  .object({
+    identityKey: z.string(),
+    rxcui: z.string(),
+    language,
+    mode: explanationMode,
+    sources: z.array(medicineSource),
+    sections: z.array(medicineSection).length(4),
+    educationLinks: z.array(
+      z
+        .object({
+          title: z.string(),
+          url: z.string().url(),
+          language,
+          sourceId: id,
+        })
+        .strict(),
+    ),
+    interactions: z
+      .object({
+        personalized: z
+          .object({ status: z.literal("unavailable"), reason: z.string() })
+          .strict(),
+      })
+      .strict(),
+    notes: z.array(z.string()),
+  })
+  .strict()
+  .refine((info) => {
+    const sourceIds = new Set(info.sources.map((s) => s.id));
+    return info.sections.every((s) =>
+      s.passages.every((p) => sourceIds.has(p.sourceId)),
+    );
+  }, "Every passage must come from a listed source");
+export const medicineInfoResponse = envelope(medicineInfo);
+
+export type Account = z.infer<typeof account>;
+export type Invitation = z.infer<typeof invitation>;
+export type Connection = z.infer<typeof connection>;
+export type Grant = z.infer<typeof grant>;
+export type SharedLabel = z.infer<typeof sharedLabel>;
+export type SavedLabel = z.infer<typeof savedLabel>;
+export type MedicineCandidate = z.infer<typeof medicineCandidate>;
+export type MedicineInfo = z.infer<typeof medicineInfo>;
+export type MedicineSource = z.infer<typeof medicineSource>;
+export type SourcePassage = z.infer<typeof sourcePassage>;
