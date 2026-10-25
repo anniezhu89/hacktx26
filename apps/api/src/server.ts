@@ -26,6 +26,10 @@ const community = communityOptions.enabled
   ? new CommunityService(communityOptions)
   : null;
 const port = Number(process.env.PORT || 3001);
+// Local-only unless an operator opts in: a hosting platform reaches the server
+// through its own proxy, so deploy with HOST=0.0.0.0.
+const host = process.env.HOST || "127.0.0.1";
+const proxyHops = Number(process.env.LABELBRIDGE_TRUST_PROXY || 0);
 const cases = new CaseStore(Date.now);
 const sessions = new SessionStore(Date.now);
 setInterval(() => {
@@ -54,9 +58,10 @@ createApp(undefined, {
   accounts,
   medicine,
   community,
-}).listen(port, "127.0.0.1", () =>
+  trustProxy: proxyHops > 0 ? proxyHops : undefined,
+}).listen(port, host, () =>
   console.log(
-    `decodRx server: http://127.0.0.1:${port} — image extraction: ` +
+    `decodRx server: http://${host}:${port} — image extraction: ` +
       `${extraction ? `live (${extraction.model})` : "fixture (no GEMINI_API_KEY)"}; ` +
       `pharmacy search: ${search ? "live" : "fixture (no SERPAPI_API_KEY)"}; ` +
       `reference lookups: ${medicine ? "on (NLM)" : "off"}; ` +

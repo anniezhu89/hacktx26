@@ -17,7 +17,7 @@ npm run build
 npm start
 ```
 
-Open http://127.0.0.1:3001. Express serves the frontend build and API routes. Bind address is loopback. `PORT`, `WEB_PORT`, and `API_TARGET` customize local ports/proxy. The API loads the root `.env`; Gemini, SerpApi, Meta and optional geocoding credentials stay on the server. Photo reading requires configured Gemini credentials. The shipped browser always uses the HTTP API; mock clients and sample labels are test-only.
+Open http://127.0.0.1:3001. Express serves the frontend build and API routes. The default bind address is loopback. Hosting platforms can set `HOST=0.0.0.0` and, when behind one trusted TLS-terminating proxy, `LABELBRIDGE_TRUST_PROXY=1`. `PORT`, `WEB_PORT`, and `API_TARGET` customize local ports/proxy. The API loads the root `.env`; Gemini, SerpApi, Meta and optional geocoding credentials stay on the server. Photo reading requires configured Gemini credentials. The shipped browser always uses the HTTP API; mock clients and sample labels are test-only.
 
 ```sh
 npm run check
