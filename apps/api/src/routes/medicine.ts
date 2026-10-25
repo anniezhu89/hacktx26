@@ -75,7 +75,7 @@ export function identityKeyOf(c: Case) {
 }
 
 export const PERSONALIZED_UNAVAILABLE =
-  "No personalized interaction checker is connected. The U.S. National Library of Medicine retired its free interaction service in January 2024, and LabelBridge has no licensed replacement. The general interaction text comes from this product's labeling and is not a check of your medicines. An empty result would never mean a combination is safe.";
+  "No personalized interaction checker is connected. The U.S. National Library of Medicine retired its free interaction service in January 2024, and decodRx has no licensed replacement. The general interaction text comes from this product's labeling and is not a check of your medicines. An empty result would never mean a combination is safe.";
 
 export function registerMedicineRoutes(
   ctx: RouteContext,

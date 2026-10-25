@@ -3,7 +3,6 @@ import { fieldsRevisionOf, type Case } from "@labelbridge/contracts";
 import type { ApiClient, ApiError, PlanData } from "../api/client";
 import { FIELD_LABELS, FIELD_ORDER, type FieldKey } from "../lib/fields";
 import type { CaseSession } from "../state/useCaseSession";
-import type { SavingsResult } from "./Savings";
 import { TaskList, type TaskAction } from "./TaskList";
 
 const TRANSPORT = [
@@ -143,18 +142,15 @@ export function SharedSupport({
   api,
   caseData,
   session,
-  savings,
 }: {
   api: ApiClient;
   caseData: Case;
   session: CaseSession;
-  savings: SavingsResult;
 }) {
   const [unavailable, setUnavailable] = useState(false);
   const [availability, setAvailability] = useState("");
   const [transport, setTransport] = useState(TRANSPORT[0]);
   const [budget, setBudget] = useState("");
-  const [chosen, setChosen] = useState<string[]>([]);
   const [plan, setPlan] = useState<{ key: number; data: PlanData } | null>(
     null,
   );
@@ -163,7 +159,6 @@ export function SharedSupport({
   const fieldsRevision = fieldsRevisionOf(caseData);
   // Suggestions belong to the fields they were made for.
   const currentPlan = plan?.key === fieldsRevision ? plan.data : null;
-  const options = savings.data?.options ?? [];
   const markUnavailable = () => setUnavailable(true);
   const handleUnavailable = unavailableHandler(
     api,
@@ -203,9 +198,7 @@ export function SharedSupport({
                 budget: budgetValue,
               },
             ],
-            selectedOptionIds: chosen.filter((id) =>
-              options.some((o) => o.id === id),
-            ),
+            selectedOptionIds: [],
           },
           signal,
         );
@@ -305,29 +298,6 @@ export function SharedSupport({
                 onChange={(e) => setBudget(e.target.value)}
               />
             </div>
-            {options.length > 0 && (
-              <fieldset>
-                <legend>Savings results to include</legend>
-                <div className="choices">
-                  {options.map((o) => (
-                    <label key={o.id} className="choice">
-                      <input
-                        type="checkbox"
-                        checked={chosen.includes(o.id)}
-                        onChange={(e) =>
-                          setChosen((c) =>
-                            e.target.checked
-                              ? [...c, o.id]
-                              : c.filter((x) => x !== o.id),
-                          )
-                        }
-                      />
-                      {o.sourceTitle}
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-            )}
             {errors.length > 0 && (
               <div className="banner banner-error" role="alert">
                 <ul>

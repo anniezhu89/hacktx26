@@ -5,13 +5,13 @@ import {
   eligibleForExplanation,
 } from "../../../packages/contracts/src/index";
 import { ApiError, createHttpClient } from "../../../apps/web/src/api/client";
-import { createMockClient } from "../../../apps/web/src/api/mock";
+import { createMockClient } from "../../helpers/mockClient";
 import {
   fieldCondition,
   reviewProgress,
   validateImageFile,
 } from "../../../apps/web/src/lib/fields";
-import { SAMPLES, findSample } from "../../../apps/web/src/samples";
+import { SAMPLES, findSample } from "../../helpers/labels";
 import {
   createLatestTracker,
   shouldAcceptCase,
@@ -357,8 +357,7 @@ describe("backend evidence conventions", () => {
     expect(
       fieldCondition({
         ...base,
-        evidence:
-          "Not read: no live image extraction provider is configured (fixture mode).",
+        evidence: "Not read: no live image extraction provider is configured.",
       }),
     ).toBe("missing");
     for (const marker of ["[unreadable]", "smudged", "[?]"])

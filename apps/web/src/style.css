@@ -1,4 +1,4 @@
-/* LabelBridge visual system, from the Figma Make design export.
+/* decodRx visual system, from the Figma Make design export.
    Components use only the semantic tokens below, never raw colors. */
 :root {
   /* Palette (export values) */
@@ -497,7 +497,7 @@ button.danger:hover:not(:disabled) {
 }
 .method-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 0.9rem;
   padding-bottom: 0.9rem;
   border-bottom: 1px solid var(--color-border);
@@ -573,37 +573,6 @@ button.danger:hover:not(:disabled) {
   display: grid;
   gap: 0.75rem;
   align-content: start;
-}
-.samples legend {
-  margin-bottom: 0.5rem;
-}
-.sample-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-}
-.sample-option {
-  flex: 1 1 11rem;
-  min-height: var(--target);
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.45rem 0.85rem;
-  border: 1px solid #d5dcda;
-  border-radius: 0.6rem;
-  cursor: pointer;
-}
-.sample-option span {
-  display: grid;
-}
-.sample-option small {
-  color: var(--color-text-muted);
-  font-size: 0.8rem;
-}
-.sample-option.selected {
-  border: 2px solid var(--color-primary);
-  background: var(--color-accent-sage);
-  padding: calc(0.45rem - 1px) calc(0.85rem - 1px);
 }
 
 /* Label preview */
@@ -1100,17 +1069,6 @@ button.danger:hover:not(:disabled) {
   gap: 0.6rem;
   cursor: pointer;
 }
-.sample-grid {
-  display: grid;
-  gap: 0.6rem;
-}
-.sample-card {
-  display: flex;
-  gap: 0.6rem;
-  padding: 0.6rem 0.8rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-}
 .compare {
   display: grid;
   gap: 0.5rem;
@@ -1229,46 +1187,9 @@ details summary {
   gap: 0.6rem;
 }
 
-/* Footer and diagnostics */
+/* Footer */
 .site-footer {
   padding: 1rem 0 2rem;
-}
-.disclaimer {
-  display: flex;
-  align-items: center;
-  gap: 1.3rem;
-  width: min(82rem, calc(100% - 3rem));
-  margin: 0 auto 1rem;
-  color: var(--color-text-muted);
-  font-size: 0.75rem;
-  text-align: center;
-}
-.disclaimer::before,
-.disclaimer::after {
-  content: "";
-  height: 1px;
-  background: var(--color-border);
-  flex: 1;
-}
-.diagnostics {
-  padding: 0.8rem 1rem;
-  border: 1px dashed var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-}
-.diagnostics h2 {
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
-  margin-bottom: 0.4rem;
-}
-.health {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.6rem 1rem;
-}
-.health button {
-  font-size: 0.85rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1287,15 +1208,11 @@ details summary {
   .side-by-side {
     grid-template-columns: 1fr 1fr;
   }
-  .sample-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
 }
 
 /* Tablet and phone: stacked cards, preview above the fields. */
 @media (max-width: 54rem) {
-  .shell,
-  .disclaimer {
+  .shell {
     width: min(100% - 1.6rem, 40rem);
   }
   .nav {
@@ -1361,8 +1278,7 @@ details summary {
 }
 
 @media (max-width: 28rem) {
-  .shell,
-  .disclaimer {
+  .shell {
     width: calc(100% - 1.1rem);
   }
   .brand-mark {

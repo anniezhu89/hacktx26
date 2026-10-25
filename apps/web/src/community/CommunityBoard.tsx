@@ -1,4 +1,5 @@
-﻿import { useEffect, useRef, useState, type FormEvent } from "react";
+import { DATA_MODE_LABEL } from "../lib/dataMode";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   COMMUNITY_CATEGORY_LABELS,
   communityCategory,
@@ -443,9 +444,10 @@ export function CommunityBoard({
                   : "Source results"}
             </b>
             <span>
-              {board.cache.status} · Retrieval {board.providers.retrieval} ·
-              Enrichment {board.providers.enrichment} · Geocoding{" "}
-              {board.providers.geocoding}
+              {board.cache.status} · Retrieval{" "}
+              {DATA_MODE_LABEL[board.providers.retrieval]} · Enrichment{" "}
+              {DATA_MODE_LABEL[board.providers.enrichment]} · Geocoding{" "}
+              {DATA_MODE_LABEL[board.providers.geocoding]}
             </span>
             {board.cache.retrievedAt && (
               <span>Retrieved {stamp(board.cache.retrievedAt)}</span>
@@ -454,7 +456,7 @@ export function CommunityBoard({
               <span>
                 Origin: {board.origin.label} (
                 {board.origin.accuracy === "zip_centroid" ? "ZIP" : "city"}{" "}
-                centroid, {board.origin.dataMode})
+                centroid, {DATA_MODE_LABEL[board.origin.dataMode]})
               </span>
             )}
           </div>
@@ -465,7 +467,9 @@ export function CommunityBoard({
             >
               <ul>
                 {board.warnings.map((w) => (
-                  <li key={w}>{w}</li>
+                  <li key={w}>
+                    {w.replace(/\bfixtures\b/gi, "simulated examples")}
+                  </li>
                 ))}
               </ul>
             </aside>
@@ -544,7 +548,9 @@ export function CommunityBoard({
                           aria-labelledby={`${l.id}-title`}
                         >
                           <div className="community-card-top">
-                            <span className="pill gray">{l.dataMode}</span>
+                            <span className="pill gray">
+                              {DATA_MODE_LABEL[l.dataMode]}
+                            </span>
                             <span className="eyebrow">
                               {l.kind === "event"
                                 ? "Event"

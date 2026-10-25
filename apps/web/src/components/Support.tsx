@@ -7,7 +7,6 @@ import { Explanation } from "./Explanation";
 import { MedicineTranslator } from "./MedicineTranslator";
 import { Pharmacies } from "./Pharmacies";
 import { Progress } from "./Progress";
-import { Savings, type SavingsResult } from "./Savings";
 import { SharedSupport } from "./SharedSupport";
 
 /** Step 3. Each section calls the backend itself and shows its own state. */
@@ -15,14 +14,12 @@ export function Support({
   api,
   caseData,
   session,
-  savings,
   headingRef,
   onBack,
 }: {
   api: ApiClient;
   caseData: Case;
   session: CaseSession;
-  savings: SavingsResult;
   headingRef: RefObject<HTMLHeadingElement | null>;
   onBack: () => void;
 }) {
@@ -55,23 +52,10 @@ export function Support({
           />
         </div>
         <div className="support-section">
-          <Savings
-            api={api}
-            caseData={caseData}
-            session={session}
-            result={savings}
-          />
-        </div>
-        <div className="support-section">
           <Pharmacies api={api} caseData={caseData} />
         </div>
         <div className="support-section">
-          <SharedSupport
-            api={api}
-            caseData={caseData}
-            session={session}
-            savings={savings}
-          />
+          <SharedSupport api={api} caseData={caseData} session={session} />
         </div>
       </div>
     </>

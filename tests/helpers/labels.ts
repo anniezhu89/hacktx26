@@ -1,8 +1,8 @@
 import { caseSchema, type Case } from "@labelbridge/contracts";
-import ambiguousFixture from "../../../fixtures/ambiguous.json";
-import clearFixture from "../../../fixtures/clear.json";
-import unreadableFixture from "../../../fixtures/unreadable.json";
-import type { FieldKey } from "./lib/fields";
+import ambiguousFixture from "../../fixtures/ambiguous.json";
+import clearFixture from "../../fixtures/clear.json";
+import unreadableFixture from "../../fixtures/unreadable.json";
+import type { FieldKey } from "../../apps/web/src/lib/fields";
 
 type Crop = NonNullable<Case["fields"][number]["crop"]>;
 

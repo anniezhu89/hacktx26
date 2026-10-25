@@ -34,18 +34,19 @@ import {
   type Case,
   type ReviewRequest,
 } from "@labelbridge/contracts";
-import { FIELD_ORDER } from "../lib/fields";
-import explanationFixture from "../../../../fixtures/explanation.json";
-import savingsFixture from "../../../../fixtures/savings.json";
-import pharmaciesFixture from "../../../../fixtures/pharmacies.json";
-import { SAMPLES, findSample } from "../samples";
+import { FIELD_ORDER } from "../../apps/web/src/lib/fields";
+import explanationFixture from "../../fixtures/explanation.json";
+import savingsFixture from "../../fixtures/savings.json";
+import pharmaciesFixture from "../../fixtures/pharmacies.json";
+import { SAMPLES, findSample } from "./labels";
 import {
   ApiError,
   type ApiClient,
+  type IntakeSource,
   type CaseResult,
   type ErrorCode,
   type Result,
-} from "./client";
+} from "../../apps/web/src/api/client";
 
 const STATUS: Record<ErrorCode, number> = {
   BAD_REQUEST: 400,
@@ -213,6 +214,10 @@ const SCHEDULED =
   /\b(?:once|twice|three times|four times|every|daily|nightly|hourly|a day|per day)\b/i;
 
 export interface MockClient extends ApiClient {
+  createCase(
+    source: IntakeSource | { kind: "sample"; sampleId: string; text: string },
+    signal?: AbortSignal,
+  ): Promise<CaseResult>;
   /** Make the next request fail with this code (tests and demo rehearsal). */
   failNext(code: ErrorCode): void;
   /** Store access for tests; simulates an edit from elsewhere. */

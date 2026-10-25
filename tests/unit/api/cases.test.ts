@@ -355,7 +355,9 @@ describe("image intake", () => {
           rawText: null,
           reviewState: "unresolved",
         });
-      expect(body.data.fields[0].evidence).toMatch(/fixture mode/);
+      expect(body.data.fields[0].evidence).toBe(
+        "Not read: no live image extraction provider is configured.",
+      );
     }
   });
 

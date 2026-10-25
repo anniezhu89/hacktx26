@@ -1,35 +1,54 @@
-import { test, expect } from "@playwright/test";
-test("production server serves React and contract-valid API", async ({
+﻿import { test, expect } from "@playwright/test";
+import { healthResponse } from "../../packages/contracts/src/index";
+test("production server serves decodRx with photo/text intake and contract-valid API", async ({
   page,
   request,
 }) => {
-  const health = await request.get("/api/health");
-  expect(health.ok()).toBeTruthy();
-  expect(await health.json()).toMatchObject({
+  const response = await request.get("/api/health");
+  expect(response.ok()).toBe(true);
+  expect(healthResponse.parse(await response.json())).toMatchObject({
     contractVersion: "1",
     dataMode: "fixture",
     data: { status: "ok" },
   });
   await page.goto("/");
-  await expect(page.getByText("Demo: fictional medication data")).toBeVisible();
-  await page.getByText("Developer diagnostics", { exact: true }).click();
-  await page.getByRole("button", { name: "Check backend connection" }).click();
-  await expect(page.getByRole("status")).toHaveText(
-    "Backend connected. Data mode: fixture. Contract version: 1.",
-  );
+  await expect(page).toHaveTitle("decodRx");
+  await expect(
+    page.getByRole("button", { name: "decodRx, start over" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("radio", { name: /^Upload a photo/ }),
+  ).toBeChecked();
+  await expect(
+    page.getByRole("radio", { name: /^Type or paste text/ }),
+  ).toBeVisible();
+  await expect(page.getByRole("radio")).toHaveCount(2);
+  for (const text of [
+    "Demo views",
+    "Try a sample",
+    "Developer diagnostics",
+    "A reading aid, not a medical verification service.",
+  ])
+    await expect(page.getByText(text, { exact: true })).toHaveCount(0);
+  await expect(page.locator("body")).not.toContainText("Fixture data");
 });
-test("development proxy reaches API at mobile width", async ({ page }) => {
+test("development proxy reaches API at mobile width without diagnostics", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto(`http://127.0.0.1:${process.env.SMOKE_WEB_PORT || 43128}`);
-  await page.getByText("Developer diagnostics", { exact: true }).click();
-  await page.getByRole("button", { name: "Check backend connection" }).focus();
-  await page.keyboard.press("Enter");
-  await expect(page.getByRole("status")).toContainText(
-    "Backend connected. Data mode: fixture.",
-  );
+  const response = await page.evaluate(async () => {
+    const result = await fetch("/api/health");
+    return { status: result.status, body: await result.json() };
+  });
+  expect(response.status).toBe(200);
+  expect(healthResponse.parse(response.body).data.status).toBe("ok");
+  await page.getByRole("radio", { name: /^Type or paste text/ }).focus();
+  await page.keyboard.press("Space");
+  await expect(page.getByLabel("Fictional label text")).toBeVisible();
   expect(
     await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
+      () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
 });

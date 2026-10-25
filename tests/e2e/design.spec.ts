@@ -10,15 +10,21 @@ test("reference intake keeps consent, help and real server field review", async 
   const intake = page.locator("form.intake");
   expect((await intake.boundingBox())!.width).toBeCloseTo(1320, 0);
   await expect(
-    page.getByRole("navigation", { name: "Demo workspaces" }),
+    page.getByRole("navigation", { name: "Workspaces" }),
   ).toBeVisible();
+  for (const name of ["Patient", "Supporter", "Volunteer reader", "Account"])
+    await expect(
+      page
+        .getByRole("navigation", { name: "Workspaces", exact: true })
+        .getByRole("button", { name, exact: true }),
+    ).toBeVisible();
+  await expect(page.getByText("Demo views", { exact: true })).toHaveCount(0);
   await expect(page.locator(".method-card.selected")).toHaveCSS(
     "background-color",
     "rgb(232, 241, 234)",
   );
-  expect(
-    (await page.locator(".sample-option").first().boundingBox())!.height,
-  ).toBeLessThanOrEqual(56);
+  await expect(page.locator(".method-card")).toHaveCount(2);
+  await expect(page.getByText("Try a sample", { exact: true })).toHaveCount(0);
   const submit = page.getByRole("button", { name: /Check label details/ });
   await expect(submit).toBeDisabled();
   await page.getByRole("link", { name: "Get help", exact: true }).click();
@@ -29,6 +35,13 @@ test("reference intake keeps consent, help and real server field review", async 
   );
   await acknowledgement.focus();
   await page.keyboard.press("Space");
+  await expect(submit).toBeDisabled();
+  await page.getByText("Type or paste text", { exact: true }).click();
+  await page
+    .getByLabel("Fictional label text")
+    .fill(
+      "Medication: Levothyroxine Sodium\nStrength: 0.05 mg\nForm: tablet\nQuantity: 30\nDirections: Take one tablet twice daily as needed.",
+    );
   await expect(submit).toBeEnabled();
   await page.screenshot({
     path: testInfo.outputPath("reference-desktop.png"),

@@ -48,8 +48,8 @@ export function SettingsScreen({
           <span className="eyebrow">Account</span>
           <h1>Profile and settings</h1>
           <p>
-            Choose how LabelBridge works for you. These choices change what you
-            see, never what anyone can access.
+            Choose how decodRx works for you. These choices change what you see,
+            never what anyone can access.
           </p>
         </div>
       </header>

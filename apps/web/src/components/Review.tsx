@@ -17,17 +17,11 @@ export function sourcePreview(source: DisplaySource | null): PreviewContent {
   if (!source)
     return { kind: "empty", message: "The original label is not available." };
   if (source.kind === "text") return { kind: "text", text: source.text };
-  return source.kind === "sample"
-    ? {
-        kind: "image",
-        src: source.sample.imageUrl,
-        alt: source.sample.imageAlt,
-      }
-    : {
-        kind: "image",
-        src: source.previewUrl,
-        alt: `Your uploaded label photo ${source.fileName}`,
-      };
+  return {
+    kind: "image",
+    src: source.previewUrl,
+    alt: `Your uploaded label photo ${source.fileName}`,
+  };
 }
 
 export function Review({
@@ -58,12 +52,7 @@ export function Review({
   // refuses explanations otherwise; this only reflects saved state.
   const eligible = eligibleForExplanation(fields);
   const busy = session.pending !== null;
-  const imageSrc =
-    source?.kind === "sample"
-      ? source.sample.imageUrl
-      : source?.kind === "image"
-        ? source.previewUrl
-        : null;
+  const imageSrc = source?.kind === "image" ? source.previewUrl : null;
   const expires = new Date(c.expiresAt).toLocaleTimeString([], {
     hour: "numeric",
     minute: "2-digit",

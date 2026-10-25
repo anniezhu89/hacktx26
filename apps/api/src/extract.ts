@@ -222,7 +222,7 @@ export function unresolvedImageExtraction(
   const evidence =
     reason === "attempted"
       ? "Not read: the image extraction provider was unavailable."
-      : "Not read: no live image extraction provider is configured (fixture mode).";
+      : "Not read: no live image extraction provider is configured.";
   const fields = fieldKey.options.map((key) =>
     labelField.parse({
       key,

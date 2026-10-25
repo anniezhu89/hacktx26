@@ -8,12 +8,10 @@ import {
   type FieldsRequest,
   type IntakeSource,
 } from "../api/client";
-import type { SampleLabel } from "../samples";
 import { createLatestTracker, shouldAcceptCase } from "./guards";
 
 /** What the patient submitted, kept in the browser for side-by-side review. */
 export type DisplaySource =
-  | { kind: "sample"; sample: SampleLabel }
   | { kind: "image"; previewUrl: string; fileName: string }
   | { kind: "text"; text: string };
 
@@ -89,13 +87,13 @@ export function useCaseSession(api: ApiClient) {
     clearCase();
     setExpired(
       e.code === "EXPIRED"
-        ? "This demo case expired and its image and fields were cleared. Start again with a fresh sample."
-        : "This demo case is no longer available (the demo server may have restarted). Start again with a fresh sample.",
+        ? "This demo case expired and its image and fields were cleared. Upload another photo or paste the label text."
+        : "This demo case is no longer available (the demo server may have restarted). Upload another photo or paste the label text.",
     );
   };
 
   const create = useCallback(
-    async (intake: IntakeSource, sample?: SampleLabel) => {
+    async (intake: IntakeSource) => {
       if (pendingRef.current) return;
       setExpired(null);
       setNotice(null);
@@ -110,9 +108,7 @@ export function useCaseSession(api: ApiClient) {
                 previewUrl: URL.createObjectURL(intake.file),
                 fileName: intake.file.name,
               }
-            : sample
-              ? { kind: "sample", sample }
-              : { kind: "text", text: intake.text };
+            : { kind: "text", text: intake.text };
         revokePreview(sourceRef.current);
         sourceRef.current = display;
         caseRef.current = null;
@@ -123,7 +119,7 @@ export function useCaseSession(api: ApiClient) {
         const err = toApiError(e);
         setError({
           error: err,
-          retry: err.retryable ? () => void create(intake, sample) : null,
+          retry: err.retryable ? () => void create(intake) : null,
         });
       }
     },

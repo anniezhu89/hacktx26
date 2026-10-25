@@ -176,8 +176,8 @@ describe("price display", () => {
 describe("explanation and savings in the mock", () => {
   // Imported lazily so the pure-helper tests above stay independent.
   const setup = async () => {
-    const { createMockClient } = await import("../../../apps/web/src/api/mock");
-    const { findSample } = await import("../../../apps/web/src/samples");
+    const { createMockClient } = await import("../../helpers/mockClient");
+    const { findSample } = await import("../../helpers/labels");
     const client = createMockClient({
       latencyMs: 0,
       now: () => new Date("2026-10-24T20:00:00.000Z"),

@@ -1,9 +1,8 @@
 import { CommunityBoard } from "./community/CommunityBoard";
 import { communityClient } from "./community/client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fieldsRevisionOf, healthResponse } from "@labelbridge/contracts";
 import { api } from "./api";
-import { toApiError, type Role, type SavingsData } from "./api/client";
+import { toApiError, type Role } from "./api/client";
 import { workspace, type TextSize } from "./api/workspace";
 import { AuthScreen } from "./components/account/AuthScreen";
 import { CircleScreen } from "./components/account/CircleScreen";
@@ -21,7 +20,6 @@ import { draftHasContent, emptyDraft, type IntakeDraft } from "./lib/intake";
 import { useAccount } from "./state/useAccount";
 import { useCaseSession } from "./state/useCaseSession";
 import { usePatientReviews, useReviewerQueue } from "./state/useReviews";
-import { useRevisionResult } from "./state/useRevisionResult";
 import { useSupporterView } from "./state/useSupporterView";
 
 // Only the display preference is stored; label contents never are.
@@ -39,36 +37,6 @@ function readTextSize(): TextSize {
   } catch {
     return "standard";
   }
-}
-
-/** Developer diagnostic: kept out of the main flow, in the footer panel. */
-function HealthCheck() {
-  const [status, setStatus] = useState("Not connected");
-  const [pending, setPending] = useState(false);
-  async function connect() {
-    setPending(true);
-    setStatus("Connecting");
-    try {
-      const response = await fetch("/api/health");
-      if (!response.ok) throw new Error("Request failed");
-      const result = healthResponse.parse(await response.json());
-      setStatus(
-        `Backend connected. Data mode: ${result.dataMode}. Contract version: ${result.contractVersion}.`,
-      );
-    } catch {
-      setStatus("Connection failed. Try again.");
-    } finally {
-      setPending(false);
-    }
-  }
-  return (
-    <div className="health">
-      <button type="button" disabled={pending} onClick={connect}>
-        Check backend connection
-      </button>
-      <p role="status">{status}</p>
-    </div>
-  );
 }
 
 function SupporterPane() {
@@ -112,10 +80,6 @@ export function App() {
   const session = useCaseSession(api);
   const c = session.result?.case ?? null;
   const help = usePatientReviews(api, c?.id ?? null);
-  const savings = useRevisionResult<SavingsData>(
-    c?.id ?? "",
-    c ? fieldsRevisionOf(c) : 0,
-  );
   const [draft, setDraft] = useState<IntakeDraft>(() => emptyDraft());
   const [caseStep, setCaseStep] = useState<"check" | "support">("check");
   const [screen, setScreen] = useState<Screen>("add");
@@ -309,12 +273,6 @@ export function App() {
 
   const flow = (
     <>
-      {api.kind === "mock" && (
-        <p className="banner banner-info shell">
-          This build uses built-in fictional fixtures in your browser instead of
-          the server. Nothing is read by AI.
-        </p>
-      )}
       {persona === "reviewer" && !me ? (
         <div className="shell persona-pane">
           <VolunteerPane />
@@ -370,7 +328,6 @@ export function App() {
               api={api}
               caseData={session.result.case}
               session={session}
-              savings={savings}
               headingRef={headings.support}
               onBack={() => goTo("check")}
             />
@@ -397,7 +354,6 @@ export function App() {
             draft={draft}
             onDraft={setDraft}
             session={session}
-            apiKind={api.kind}
             headingRef={headings.add}
           />
         </>
@@ -455,14 +411,14 @@ export function App() {
           type="button"
           className="brand"
           onClick={startOver}
-          aria-label="LabelBridge, start over"
+          aria-label="decodRx, start over"
         >
           <span className="brand-mark" aria-hidden="true">
             <i />
             <i />
             <i />
           </span>
-          <span>LabelBridge</span>
+          <span>decodRx</span>
         </button>
         <nav aria-label="Display and account options" className="nav-tools">
           {step === "add" &&
@@ -510,9 +466,8 @@ export function App() {
         </nav>
       </header>
       {!me && (
-        <nav className="demo-nav" aria-label="Demo workspaces">
+        <nav className="demo-nav" aria-label="Workspaces">
           <div className="shell">
-            <span>Demo views</span>
             {communityEnabled && (
               <button
                 type="button"
@@ -621,9 +576,6 @@ export function App() {
       )}
 
       <footer className="site-footer">
-        <p className="disclaimer">
-          A reading aid, not a medical verification service.
-        </p>
         <details
           id="help"
           className="help-guide shell"
@@ -637,10 +589,6 @@ export function App() {
             unreadable, mark it unknown or choose Get help. Medication questions
             should go to a pharmacist.
           </p>
-        </details>
-        <details className="diagnostics shell">
-          <summary>Developer diagnostics</summary>
-          <HealthCheck />
         </details>
       </footer>
 

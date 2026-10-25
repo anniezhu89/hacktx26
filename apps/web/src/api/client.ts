@@ -54,9 +54,7 @@ export type PharmacySearch = ReturnType<typeof pharmacySearchRequest.parse>;
 export type { ReviewRequest, ReviewerView };
 
 export type IntakeSource =
-  | { kind: "sample"; sampleId: string; text: string }
-  | { kind: "image"; file: File }
-  | { kind: "text"; text: string };
+  { kind: "image"; file: File } | { kind: "text"; text: string };
 
 export interface CaseResult {
   case: Case;
@@ -71,7 +69,7 @@ export interface Result<T> {
 }
 
 export interface ApiClient {
-  /** "mock" means responses come from in-browser fixtures, not the backend. */
+  /** "mock" is reserved for the isolated test client; the app uses HTTP. */
   readonly kind: "http" | "mock";
   createCase(source: IntakeSource, signal?: AbortSignal): Promise<CaseResult>;
   getCase(id: string, signal?: AbortSignal): Promise<CaseResult>;
@@ -158,7 +156,7 @@ export function toApiError(error: unknown): ApiError {
   if (error instanceof ApiError) return error;
   return new ApiError(
     "PROVIDER_UNAVAILABLE",
-    "We could not reach the LabelBridge server. Check your connection and try again.",
+    "We could not reach the decodRx server. Check your connection and try again.",
     true,
     0,
   );

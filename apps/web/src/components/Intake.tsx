@@ -5,7 +5,6 @@ import {
   type FormEvent,
   type RefObject,
 } from "react";
-import type { ApiClient } from "../api/client";
 import { isProblem, preparePhoto } from "../lib/photo";
 import {
   MAX_TEXT,
@@ -15,7 +14,6 @@ import {
   type IntakeMode,
   type IntakeProblem,
 } from "../lib/intake";
-import { SAMPLES, findSample } from "../samples";
 import type { CaseSession } from "../state/useCaseSession";
 import { ErrorBanner } from "./ErrorBanner";
 import { LabelPreview, type PreviewContent } from "./LabelPreview";
@@ -29,12 +27,6 @@ const MODES: {
   detail: string;
   icon: DesignIconName;
 }[] = [
-  {
-    id: "sample",
-    title: "Try a sample",
-    detail: "Explore with a fictional label",
-    icon: "label",
-  },
   {
     id: "image",
     title: "Upload a photo",
@@ -65,13 +57,11 @@ export function Intake({
   draft,
   onDraft,
   session,
-  apiKind,
   headingRef,
 }: {
   draft: IntakeDraft;
   onDraft: (update: (d: IntakeDraft) => IntakeDraft) => void;
   session: CaseSession;
-  apiKind: ApiClient["kind"];
   headingRef: RefObject<HTMLHeadingElement | null>;
 }) {
   const [problems, setProblems] = useState<IntakeProblem[]>([]);
@@ -89,7 +79,6 @@ export function Intake({
     draft.mode === "image" && session.error
       ? uploadErrorMessage(session.error.error)
       : null;
-  const sample = findSample(draft.sampleId) ?? SAMPLES[0];
   const set = (patch: Partial<IntakeDraft>) =>
     onDraft((d) => ({ ...d, ...patch }));
   const problemFor = (target: IntakeProblem["target"]) =>
@@ -137,31 +126,24 @@ export function Intake({
     }
     // Navigation follows the server's result, not this click: the review
     // step opens only once a case comes back.
-    if (draft.mode === "sample")
-      void session.create(
-        { kind: "sample", sampleId: sample.id, text: sample.text },
-        sample,
-      );
-    else if (draft.mode === "image" && draft.file)
+    if (draft.mode === "image" && draft.file)
       void session.create({ kind: "image", file: draft.file });
     else if (draft.mode === "text")
       void session.create({ kind: "text", text: draft.text });
   }
 
   const preview: PreviewContent =
-    draft.mode === "sample"
-      ? { kind: "image", src: sample.imageUrl, alt: sample.imageAlt }
-      : draft.mode === "image"
-        ? fileUrl && draft.file
-          ? {
-              kind: "image",
-              src: fileUrl,
-              alt: `Preview of your photo ${draft.file.name}`,
-            }
-          : { kind: "empty", message: "No photo chosen yet." }
-        : draft.text.trim()
-          ? { kind: "text", text: draft.text }
-          : { kind: "empty", message: "Your label text will appear here." };
+    draft.mode === "image"
+      ? fileUrl && draft.file
+        ? {
+            kind: "image",
+            src: fileUrl,
+            alt: `Preview of your photo ${draft.file.name}`,
+          }
+        : { kind: "empty", message: "No photo chosen yet." }
+      : draft.text.trim()
+        ? { kind: "text", text: draft.text }
+        : { kind: "empty", message: "Your label text will appear here." };
 
   const textProblem = problemFor("text");
   const photoProblem = problemFor("photo");
@@ -224,38 +206,6 @@ export function Intake({
 
         <div className="intake-content">
           <div className="intake-main">
-            {draft.mode === "sample" && (
-              <>
-                <fieldset className="samples">
-                  <legend>Choose a sample</legend>
-                  <div className="sample-options">
-                    {SAMPLES.map((s) => (
-                      <label
-                        key={s.id}
-                        className={`sample-option ${s.id === sample.id ? "selected" : ""}`}
-                      >
-                        <input
-                          type="radio"
-                          name="sample"
-                          value={s.id}
-                          checked={s.id === sample.id}
-                          onChange={() => set({ sampleId: s.id })}
-                          aria-describedby={`sample-${s.id}-hint`}
-                        />
-                        <span>
-                          <b>{s.title}</b>
-                          <small id={`sample-${s.id}-hint`}>
-                            {s.description}
-                          </small>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-                <LabelPreview content={preview} />
-              </>
-            )}
-
             {draft.mode === "image" && (
               <div
                 className={`upload-panel ${photoError ? "error" : ""}`}
@@ -308,8 +258,6 @@ export function Intake({
                         Use good light, avoid glare, and keep the whole label in
                         view. PNG or JPEG up to 5 MB; HEIC/HEIF is converted
                         when this browser can.
-                        {apiKind === "mock" &&
-                          " This build cannot read photos automatically: you will type each field yourself."}
                       </p>
                     </>
                   )}

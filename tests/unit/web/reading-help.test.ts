@@ -4,8 +4,8 @@ import {
   reviewerView,
 } from "../../../packages/contracts/src/index";
 import { createHttpClient } from "../../../apps/web/src/api/client";
-import { createMockClient } from "../../../apps/web/src/api/mock";
-import { findSample } from "../../../apps/web/src/samples";
+import { createMockClient } from "../../helpers/mockClient";
+import { findSample } from "../../helpers/labels";
 
 const mock = () =>
   createMockClient({

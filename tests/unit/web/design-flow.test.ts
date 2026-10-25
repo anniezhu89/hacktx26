@@ -19,7 +19,7 @@ import {
   helpChange,
   unknownChange,
 } from "../../../apps/web/src/lib/review";
-import { findSample } from "../../../apps/web/src/samples";
+import { findSample } from "../../helpers/labels";
 import { caseSchema } from "../../../packages/contracts/src/index";
 
 const clear = findSample("clear")!;
@@ -28,7 +28,7 @@ const fieldOf = (key: string) =>
 
 describe("intake validation", () => {
   it("requires the fictional-data confirmation for every method", () => {
-    const sample = emptyDraft("sample");
+    const sample = { ...emptyDraft("text"), text: "Medication: fictional" };
     expect(intakeProblems(sample).map((p) => p.target)).toEqual(["ack"]);
     expect(intakeProblems({ ...sample, acknowledged: true })).toEqual([]);
   });
@@ -133,10 +133,9 @@ describe("HTTP client against the real API", () => {
 
   afterAll(() => new Promise<void>((done) => server.close(() => done())));
 
-  it("maps a sample intake to a contract-valid fixture case", async () => {
+  it("maps typed intake to a contract-valid case", async () => {
     const created = await client.createCase({
-      kind: "sample",
-      sampleId: clear.id,
+      kind: "text",
       text: clear.text,
     });
     expect(created.dataMode).toBe("fixture");

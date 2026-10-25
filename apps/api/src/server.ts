@@ -56,7 +56,7 @@ createApp(undefined, {
   community,
 }).listen(port, "127.0.0.1", () =>
   console.log(
-    `LabelBridge server: http://127.0.0.1:${port} — image extraction: ` +
+    `decodRx server: http://127.0.0.1:${port} — image extraction: ` +
       `${extraction ? `live (${extraction.model})` : "fixture (no GEMINI_API_KEY)"}; ` +
       `pharmacy search: ${search ? "live" : "fixture (no SERPAPI_API_KEY)"}; ` +
       `reference lookups: ${medicine ? "on (NLM)" : "off"}; ` +

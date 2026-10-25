@@ -68,7 +68,7 @@ async function signup(page: Page, name: string, supporter = false) {
     .getByRole("button", { name: "Create account", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Welcome to LabelBridge" }),
+    page.getByRole("heading", { name: "Welcome to decodRx" }),
   ).toBeVisible();
   if (supporter)
     await page.getByLabel("Help a family member or friend").check();
@@ -165,6 +165,18 @@ for (const viewport of [
     await confirmedCase(page);
     await layout(page);
     await page.getByRole("button", { name: /Explore support/ }).click();
+    await expect(
+      page.getByRole("heading", { name: "Ways to save", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", {
+        name: "Find a pharmacy nearby",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Shared support", exact: true }),
+    ).toBeVisible();
     await expect(
       page.getByRole("heading", {
         name: "Understand your directions",

@@ -68,7 +68,7 @@ export function AuthScreen({
     signin: "Welcome back",
     create: "Create your account",
     recover: "Recover your account",
-    welcome: "Welcome to LabelBridge",
+    welcome: "Welcome to decodRx",
   }[step];
   const message = local ?? account.error?.message;
 
@@ -103,7 +103,7 @@ export function AuthScreen({
                 />
               </label>
               <fieldset className="use-choices">
-                <legend>How would you like to use LabelBridge?</legend>
+                <legend>How would you like to use decodRx?</legend>
                 <label className="choice selected-choice">
                   <input
                     type="checkbox"

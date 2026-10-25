@@ -60,6 +60,7 @@ test("Community uses the real production API, enforces radius, and separates res
   await expect(
     page.getByText("Synthetic demo results.", { exact: false }),
   ).toBeVisible();
+  await expect(page.locator("body")).not.toContainText(/\bfixtures?\b/i);
   await page.screenshot({
     path: test.info().outputPath("community-desktop.png"),
     fullPage: true,
@@ -171,7 +172,7 @@ test("Community handles empty locations and failed searches with explicit retry"
       exact: true,
     }),
   ).toBeVisible();
-  await expect(page.getByText(/Fixtures cover Austin/)).toBeVisible();
+  await expect(page.getByText(/simulated examples cover Austin/)).toBeVisible();
   await page.route("**/api/community/listings?**", (route) =>
     route.fulfill({
       status: 503,

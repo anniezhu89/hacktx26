@@ -1,7 +1,6 @@
 import type { ApiError } from "../api/client";
-import { SAMPLES, type SampleLabel } from "../samples";
 
-export type IntakeMode = "sample" | "image" | "text";
+export type IntakeMode = "image" | "text";
 
 // Matches intakeRequest.text in @labelbridge/contracts (max 20,000).
 export const MAX_TEXT = 20000;
@@ -9,7 +8,6 @@ export const MAX_TEXT = 20000;
 /** Everything the patient has entered on the first step, kept across steps. */
 export interface IntakeDraft {
   mode: IntakeMode;
-  sampleId: SampleLabel["id"];
   file: File | null;
   /** Problem found when the file was chosen, or null. */
   fileError: string | null;
@@ -17,9 +15,8 @@ export interface IntakeDraft {
   acknowledged: boolean;
 }
 
-export const emptyDraft = (mode: IntakeMode = "sample"): IntakeDraft => ({
+export const emptyDraft = (mode: IntakeMode = "image"): IntakeDraft => ({
   mode,
-  sampleId: SAMPLES[0].id,
   file: null,
   fileError: null,
   text: "",
