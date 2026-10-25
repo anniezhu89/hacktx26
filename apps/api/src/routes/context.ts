@@ -16,6 +16,7 @@ type Parser<T> = { parse: (value: unknown) => T };
 /** What the v1.6 route modules share with the main app. */
 export type RouteContext = {
   api: Router;
+  forgetCommunityAccount?: (id: string) => void;
   now: () => number;
   cases: CaseStore;
   sessions: SessionStore;

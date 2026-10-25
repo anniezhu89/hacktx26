@@ -39,6 +39,9 @@ export function safeCommunityUrl(value: string): boolean {
       !url.port &&
       !host.endsWith(".local") &&
       !host.endsWith(".internal") &&
+      ![".localhost", ".lan", ".home", ".invalid", ".test"].some((suffix) =>
+        host.endsWith(suffix),
+      ) &&
       host !== "localhost" &&
       /^[a-z\d.-]+\.[a-z]{2,}$/i.test(host)
     );

@@ -138,6 +138,10 @@ export function registerAccountRoutes(ctx: RouteContext) {
     if (input.name) account.name = input.name;
     if (input.uses) account.uses = input.uses;
     if (input.textSize) account.textSize = input.textSize;
+    if (input.location !== undefined) {
+      if (input.location === null) delete account.location;
+      else account.location = input.location;
+    }
     send(res, accountResponse, { account: accounts.toPublic(account) });
   });
 
@@ -152,6 +156,7 @@ export function registerAccountRoutes(ctx: RouteContext) {
     for (const record of cases.inWorkspace(account.workspaceId))
       ctx.deleteCase(record.case.id);
     ctx.circle.forgetAccount(account.id);
+    ctx.forgetCommunityAccount?.(account.id);
     accounts.remove(account.id);
     sessions.detachAccount(account.id);
     const session = requireSession(res);

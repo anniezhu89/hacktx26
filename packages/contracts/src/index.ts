@@ -1,3 +1,4 @@
+import { communityLocation } from "./community.ts";
 import { z } from "zod";
 export const contractVersion = "1" as const;
 const id = z.string().min(1);
@@ -741,6 +742,7 @@ export const account = z
     createdAt: timestamp,
     /** Plain statement of where data lives and when it is deleted. */
     retention: z.string(),
+    location: communityLocation.optional(),
   })
   .strict();
 const email = z.string().trim().toLowerCase().email().max(200);
@@ -759,6 +761,7 @@ export const signinRequest = z
   .strict();
 export const preferencesRequest = z
   .object({
+    location: communityLocation.nullable().optional(),
     name: z.string().trim().min(1).max(60).optional(),
     uses: workspaceUses.optional(),
     textSize: textSize.optional(),

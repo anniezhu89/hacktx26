@@ -1,3 +1,5 @@
+import { communityConfig } from "./community/config";
+import { CommunityService } from "./community/service";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { AccountStore, approvedVolunteersFromEnv } from "./accounts";
@@ -19,6 +21,10 @@ try {
   // No .env file: providers stay unconfigured and the demo runs on fixtures.
 }
 
+const communityOptions = communityConfig();
+const community = communityOptions.enabled
+  ? new CommunityService(communityOptions)
+  : null;
 const port = Number(process.env.PORT || 3001);
 const cases = new CaseStore(Date.now);
 const sessions = new SessionStore(Date.now);
@@ -47,6 +53,7 @@ createApp(undefined, {
   search,
   accounts,
   medicine,
+  community,
 }).listen(port, "127.0.0.1", () =>
   console.log(
     `LabelBridge server: http://127.0.0.1:${port} — image extraction: ` +

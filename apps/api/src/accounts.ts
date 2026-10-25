@@ -19,6 +19,7 @@ const maxAccounts = 1000;
 export type AccountRecord = {
   id: string;
   workspaceId: string;
+  location?: string;
   name: string;
   email: string;
   passwordHash: Buffer;
@@ -127,6 +128,7 @@ export class AccountStore {
       volunteerStatus: this.volunteerStatus(record),
       createdAt: new Date(record.createdAt).toISOString(),
       retention: accountRetention,
+      ...(record.location ? { location: record.location } : {}),
     };
   }
 

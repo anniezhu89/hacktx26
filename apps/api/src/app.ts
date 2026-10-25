@@ -1,3 +1,5 @@
+import { registerCommunityRoutes } from "./community/routes";
+import type { CommunityService } from "./community/service";
 import express, { type Response } from "express";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
@@ -74,6 +76,7 @@ export type LogEntry = {
 };
 
 export type AppOptions = {
+  community?: CommunityService | null;
   now?: () => number;
   log?: (entry: LogEntry) => void;
   cases?: CaseStore;
@@ -489,7 +492,9 @@ export function createApp(
     ownedCase,
     readImageUpload,
     deleteCase,
+    forgetCommunityAccount: (id) => options.community?.store.forgetAccount(id),
   };
+  registerCommunityRoutes(ctx, options.community ?? null);
   registerAccountRoutes(ctx);
   registerCircleRoutes(ctx);
   registerReviewRoutes(ctx);
