@@ -13,6 +13,9 @@ import {
   expectedRevision,
   explanation,
   explanationResponse,
+  pharmaciesResponse,
+  pharmacyLookup,
+  pharmacySearchRequest,
   savingsOption,
   savingsRequest,
   savingsResponse,
@@ -33,6 +36,7 @@ import {
 import { FIELD_ORDER } from "../lib/fields";
 import explanationFixture from "../../../../fixtures/explanation.json";
 import savingsFixture from "../../../../fixtures/savings.json";
+import pharmaciesFixture from "../../../../fixtures/pharmacies.json";
 import { SAMPLES, findSample } from "../samples";
 import {
   ApiError,
@@ -627,6 +631,27 @@ export function createMockClient({
         );
         pendingSavings = null;
         return { options };
+      });
+    },
+    findPharmacies(caseId, body, signal) {
+      return respond(signal, pharmaciesResponse, () => {
+        const parsed = pharmacySearchRequest.safeParse(body);
+        if (!parsed.success)
+          throw mockError(
+            "BAD_REQUEST",
+            "Enter a ZIP code or city, not a street address.",
+          );
+        // Ownership only: the list depends on the location, not the label.
+        current(caseId);
+        // The offline client has no search provider, so it answers with the
+        // fictional fixture and the echoed location, never a real lookup.
+        // Parsed so the fixture is held to the contract, and so the JSON
+        // import's widened literal types narrow back to the schema's.
+        return pharmacyLookup.parse({
+          ...pharmaciesFixture,
+          locationQuery: parsed.data.location,
+          retrievedAt: new Date(now()).toISOString(),
+        });
       });
     },
     reviewImageSrc(view) {

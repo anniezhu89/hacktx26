@@ -1,0 +1,32 @@
+{
+  "locationQuery": "00000",
+  "sourceTitle": "Google Maps results via SerpApi",
+  "retrievedAt": "2026-10-24T12:00:00.000Z",
+  "ordering": "source_order",
+  "status": "ok",
+  "results": [
+    {
+      "id": "fixture-pharmacy-1",
+      "name": "Northgate Community Pharmacy (fictional)",
+      "address": "1200 Example Pkwy, Springfield, ZZ 00000",
+      "phone": "(000) 555-0100",
+      "website": "https://example.com/northgate-fictional",
+      "hoursText": "Closed · Opens 9 AM Sun",
+      "sourceRank": 1
+    },
+    {
+      "id": "fixture-pharmacy-2",
+      "name": "Example Street Chemist (fictional)",
+      "address": "48 Sample Row, Springfield, ZZ 00000",
+      "phone": null,
+      "website": null,
+      "hoursText": null,
+      "sourceRank": 2
+    }
+  ],
+  "notes": [
+    "Listed in the source's own order, not by distance: no distance was measured.",
+    "Opening hours are as reported by the source and may be out of date. Call before travelling.",
+    "Not a confirmation that a pharmacy stocks this medication or will fill this prescription."
+  ]
+}

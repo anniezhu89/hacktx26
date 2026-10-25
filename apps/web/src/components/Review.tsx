@@ -17,6 +17,7 @@ import { useRevisionResult } from "../state/useRevisionResult";
 import { ErrorBanner } from "./ErrorBanner";
 import { FieldCard } from "./FieldCard";
 import { Explanation } from "./Explanation";
+import { Pharmacies } from "./Pharmacies";
 import { ReadingHelp } from "./ReadingHelp";
 import { Savings } from "./Savings";
 import { SharedSupport } from "./SharedSupport";
@@ -180,6 +181,7 @@ export function Review({
 
       <Explanation api={api} caseData={c} session={session} />
       <Savings api={api} caseData={c} session={session} result={savings} />
+      <Pharmacies api={api} caseData={c} />
       <SharedSupport
         api={api}
         caseData={c}

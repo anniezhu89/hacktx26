@@ -141,3 +141,43 @@ Known gaps and limitations: extraction accuracy is evidenced only by the three s
 | `317cd6f0d989f10662377e5165d4623bb51fa2cd` | **PASS**           | Corrective commit: both apps pinned to 1.3.0 and the lockfile regenerated, with no dependency additions or upgrades. `npm run check` plus the Playwright smoke suite (2 tests) passed in the clean detached worktree.                                                                   |
 
 A version bump in `packages/contracts` must be applied in the same commit as the matching pins in `apps/api/package.json`, `apps/web/package.json` and `package-lock.json`, or clean install breaks even though the working tree checks pass.
+
+## Pharmacy lookup via SerpApi (B4 slice, backend, contract and frontend)
+
+Date: 2026-10-24. Spike scripts were run outside the repository; raw probes are not committed.
+
+Capability findings, from actual requests with the configured credential:
+
+| Probe                                            | Result                                                                                                                                                                        |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /account`                                   | Active, Free Plan, 1249 searches left before this work.                                                                                                                       |
+| `engine=google_maps` with `ll=@30.2747,-97.7404` | HTTP 200 in 0.9 s, 20 `local_results` with title, address, `gps_coordinates`, phone, `operating_hours`, website.                                                              |
+| `engine=google_maps` with a ZIP in `q`, no `ll`  | HTTP 200 in 14.1 s, 20 correctly localized results. **Coordinates are not required**, so only a coarse location is ever sent.                                                 |
+| Invalid API key                                  | HTTP 401 in 0.08 s with a JSON `error` field.                                                                                                                                 |
+| `q=pharmacy near ZZ00000 Nowhere`                | **HTTP 200, `search_metadata.status: "Success"`, no error field, and 14 real pharmacies in Kansas City MO, Clearwater KS and Tulsa OK.** An unusable location fails silently. |
+
+The last row drove the design. Like the Meta image finding, the provider returns a confident, well-formed, wrong answer rather than an error, so the adapter cannot treat HTTP 200 as success.
+
+Implemented: `apps/api/src/providers/serpapi.ts` looks up pharmacies near a coarse location. The only case data sent to the third party is the ZIP or place name the user typed: no medication name, strength, directions, quantity, prescription number, patient name or label text, and no coordinates, since none are collected. `localize()` verifies the answer before any of it is shown — at least one returned address must mention the requested place, and results are then kept only within 50 km of the median of those anchor coordinates, which both rejects the unrelated-cities failure above and drops outliers that ride along with good results. Distances are computed only for that check and never shown or ranked on: with a coarse location there is no point to measure from, so the response carries `ordering: "source_order"` and no distance field, and nothing is labeled "closest". Opening hours are passed through verbatim and never parsed into an "open now" claim. Normalized lookups are cached for 15 minutes keyed on the location alone, so the cache holds no personal data; a cache hit is labeled `cached`, never `live`. Failures are separated: 401/403/400 stop immediately with no further search credit spent, 429/5xx get one jittered retry, an empty result set and the provider's own no-results message are treated as answers rather than failures, and any real failure returns 503 with an adapter-written reason rather than a stale or invented list. Searches are capped at 12 per demo workspace per 10 minutes.
+
+Contract v1.4 (additive): `coarseLocation` (allowlist: a 5-digit ZIP or a place name, so a street address is rejected rather than forwarded), `pharmacy`, `pharmacyLookup`, `pharmacySearchRequest`, `pharmaciesResponse`, and `healthResponse.providers.search` widened to `"fixture" | "live"`. `pharmacySearchRequest` deliberately carries no `expectedRevision`, unlike the sibling case routes: the list derives from the location alone, so tying it to a revision would imply a dependency that does not exist and would discard a valid list whenever an unrelated task or sharing change bumped the case. `providers.search` reports only that the adapter is configured; `savings-search` remains unimplemented and still returns `NOT_IMPLEMENTED`.
+
+Frontend: `apps/web/src/components/Pharmacies.tsx`, mounted in the patient review screen. It validates the location with the same `coarseLocation` schema before sending, so a street address never leaves the browser, and it surfaces the data mode, the source, the retrieval time, the ordering caveat, the stale-hours caveat and the explicit `location_not_recognised` and `no_results` states. The offline mock client answers from `fixtures/pharmacies.json` (fictional pharmacies) so the fixture build stays functional.
+
+Automated checks: `npm run check` PASS — 150 tests, 37 new in `tests/unit/api/serpapi.test.ts`, all against a stubbed fetch with no live calls. They encode the observed scattered-results payload and assert it is rejected, and assert that no label text reaches the provider URL.
+
+Live evidence, against the built server with real credentials:
+
+- `GET /api/health` → `providers.search: "live"`.
+- `{"location":"78751"}` → `dataMode: live`, `status: ok`, 10 results, all in Austin 787xx including a genuinely nearby 78723 and 78705; ranks contiguous from 1.
+- `{"location":"Madison, WI"}` → `dataMode: live` on the first call for that location, all results in Madison 537xx.
+- `{"location":"Nowhereville"}` → HTTP 200, `status: location_not_recognised`, **zero results**. The guard held against the live provider: none of the unrelated-city pharmacies reached the response.
+- `{"location":"1200 Example Pkwy, Springfield"}` → HTTP 400 before any search was spent.
+- `{"location":"78751","medicationName":"LEVOTHIX"}` → HTTP 400; the strict request schema refuses to carry label data toward the provider.
+- A repeat of a looked-up location → `dataMode: cached` with no new upstream request.
+- Exceeding the cap → HTTP 429 `RATE_LIMITED` with `Retry-After: 515`.
+- Request logs for all of the above contain route, status, latency and provider mode only: a scan for the locations, the medication name and the returned pharmacy names found zero occurrences.
+
+Browser evidence (scripted Chromium at 420px, outside the repository): the section renders in the patient review screen; entering `1200 Example Pkwy` is rejected in the browser with no request made; `78704` returns 10 real pharmacies with addresses, verbatim hours, phone links and website links, under a "Live data" badge.
+
+Known gaps and limitations: the result list is the source's own relevance order, which is not a proximity ranking, and no distance is available — the UI says so rather than implying "closest". The 50 km cluster radius and the address-token anchor are heuristics tuned against the observed payloads, not a geocoder; a location whose name does not appear in returned addresses will read as `location_not_recognised` even if results were usable. Opening hours and phone numbers are unverified third-party data that may be stale. Pharmacy results say nothing about stock, price or whether a prescription can be filled there. `savings-search`, the explanation provider and the remaining pending routes are unchanged. No independent review of this change has been done.

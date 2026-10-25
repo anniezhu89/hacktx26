@@ -293,7 +293,10 @@ export const healthResponse = envelope(
           // the contract itself prevents claiming a provider that does not run.
           extraction: z.enum(["fixture", "live"]),
           explanation: z.literal("fixture"),
-          search: z.literal("fixture"),
+          // v1.4: reports only whether the search adapter is configured, and
+          // it currently serves the pharmacy lookup alone. "live" here is not
+          // a claim that savings-search works; that route is still pending.
+          search: z.enum(["fixture", "live"]),
         })
         .strict(),
     })
@@ -359,6 +362,75 @@ export const taskActionResponse = envelope(
 export const sessionResponse = envelope(
   z.object({ role: z.enum(["patient", "supporter", "reviewer"]) }).strict(),
 );
+// v1.4 pharmacy lookup (additive; wire contractVersion stays "1"):
+//   POST /api/cases/:id/pharmacies   patient   pharmacySearchRequest
+//                                              → pharmaciesResponse
+//
+// Deliberately coarse. The search provider is a third party, so the only
+// location it may receive is a ZIP code or a place name: never a street
+// address, and never anything read off the label. An allowlist is used rather
+// than a denylist of street patterns, so an unanticipated format is rejected
+// instead of forwarded.
+const placeName = /^[\p{L} .'-]{2,60}(,\s*\p{L}{2,})?$/u;
+export const coarseLocation = z
+  .string()
+  .trim()
+  .min(2)
+  .max(60)
+  .refine(
+    (v) => /^\d{5}$/.test(v) || placeName.test(v),
+    "Use a 5-digit ZIP code or a place name, not a street address",
+  );
+export const pharmacy = z
+  .object({
+    id,
+    name: z.string().min(1),
+    address: z.string().min(1),
+    phone: z.string().nullable(),
+    website: z.string().url().nullable(),
+    // Verbatim source text, never parsed into an "open now" claim: opening
+    // hours go stale and sending someone to a closed pharmacy is a real harm.
+    hoursText: z.string().nullable(),
+    // Position in the source's own ordering. See `ordering` below.
+    sourceRank: z.number().int().positive(),
+  })
+  .strict();
+export const pharmacyLookup = z
+  .object({
+    locationQuery: coarseLocation,
+    sourceTitle: z.string().min(1),
+    retrievedAt: timestamp,
+    // The source's relevance order. No distance is measured, ranked or
+    // claimed: a coarse location gives no point to measure from, so calling
+    // any of these the "closest" pharmacy would be unfounded.
+    ordering: z.literal("source_order"),
+    // `location_not_recognised` is its own state because the provider answers
+    // an unusable location with a successful-looking list of unrelated places.
+    status: z.enum(["ok", "no_results", "location_not_recognised"]),
+    results: z.array(pharmacy),
+    notes: z.array(z.string()),
+  })
+  .strict()
+  .refine(
+    (l) => (l.status === "ok" ? l.results.length > 0 : l.results.length === 0),
+    "Results are only valid with status ok",
+  )
+  .refine(
+    (l) =>
+      new Set(l.results.map((r) => r.sourceRank)).size === l.results.length,
+    "Duplicate sourceRank",
+  );
+// No `expectedRevision`, unlike the other case routes: a pharmacy list is
+// derived from the location alone and from nothing on the label, so tying it
+// to a revision would both imply a dependency that does not exist and discard
+// a valid list whenever an unrelated task or sharing change bumped the case.
+export const pharmacySearchRequest = z
+  .object({ location: coarseLocation })
+  .strict();
+export const pharmaciesResponse = envelope(pharmacyLookup);
+export type Pharmacy = z.infer<typeof pharmacy>;
+export type PharmacyLookup = z.infer<typeof pharmacyLookup>;
+
 export function assertRevision(actual: number, expected: number) {
   if (actual !== expected) throw new Error("REVISION_CONFLICT");
 }

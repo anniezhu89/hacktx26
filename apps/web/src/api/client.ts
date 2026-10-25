@@ -5,6 +5,8 @@ import {
   explanationResponse,
   fieldsRequest,
   intakeRequest,
+  pharmaciesResponse,
+  pharmacySearchRequest,
   savingsRequest,
   savingsResponse,
   reviewClaimRequest,
@@ -47,6 +49,8 @@ export type ExplanationData = ReturnType<
 >["data"];
 export type SavingsData = ReturnType<typeof savingsResponse.parse>["data"];
 export type SavingsRequest = ReturnType<typeof savingsRequest.parse>;
+export type PharmacyData = ReturnType<typeof pharmaciesResponse.parse>["data"];
+export type PharmacySearch = ReturnType<typeof pharmacySearchRequest.parse>;
 export type { ReviewRequest, ReviewerView };
 
 export type IntakeSource =
@@ -111,6 +115,11 @@ export interface ApiClient {
     body: SavingsRequest,
     signal?: AbortSignal,
   ): Promise<Result<SavingsData>>;
+  findPharmacies(
+    caseId: string,
+    body: PharmacySearch,
+    signal?: AbortSignal,
+  ): Promise<Result<PharmacyData>>;
   // Shared support
   updateSharing(
     caseId: string,
@@ -412,6 +421,16 @@ export function createHttpClient(fetchImpl: Fetch = fetch): ApiClient {
       return withSession("supporter", async () => {
         const res = await send("/api/shared", get(signal));
         return unwrap((await parseEnvelope(res, sharedCasesResponse)).data);
+      });
+    },
+    findPharmacies(caseId, body, signal) {
+      const parsed = pharmacySearchRequest.parse(body);
+      return patient(async () => {
+        const res = await send(
+          path("cases", caseId, "pharmacies"),
+          json("POST", parsed, signal),
+        );
+        return unwrap((await parseEnvelope(res, pharmaciesResponse)).data);
       });
     },
     searchSavings(caseId, body, signal) {

@@ -12,6 +12,8 @@ import {
   fieldsRequest,
   healthResponse,
   intakeRequest,
+  pharmaciesResponse,
+  pharmacySearchRequest,
   sessionResponse,
   type Case,
 } from "@labelbridge/contracts";
@@ -26,6 +28,11 @@ import {
 import { maxImageBytes, validateImage, type ValidatedImage } from "./image";
 import { rateLimit, type RateLimit } from "./limits";
 import { extractFromImage, type GeminiConfig } from "./providers/gemini";
+import {
+  PharmacyCache,
+  findPharmacies,
+  type SerpApiConfig,
+} from "./providers/serpapi";
 import {
   SessionStore,
   loadSession,
@@ -52,9 +59,11 @@ export type AppOptions = {
   log?: (entry: LogEntry) => void;
   cases?: CaseStore;
   sessions?: SessionStore;
-  limits?: { api?: RateLimit; intake?: RateLimit };
+  limits?: { api?: RateLimit; intake?: RateLimit; pharmacies?: RateLimit };
   /** Null keeps image intake in explicit fixture mode. */
   extraction?: GeminiConfig | null;
+  /** Null keeps the pharmacy lookup in explicit fixture mode. */
+  search?: SerpApiConfig | null;
   fetchImpl?: typeof fetch;
 };
 
@@ -101,6 +110,8 @@ export function createApp(
   // Fixture mode unless a caller explicitly opts in, so tests can never reach a
   // live provider through ambient environment variables.
   const extraction = options.extraction ?? null;
+  const search = options.search ?? null;
+  const pharmacyCache = new PharmacyCache(now);
   const app = express();
   app.disable("x-powered-by");
 
@@ -146,13 +157,15 @@ export function createApp(
         contractVersion: "1",
         requestId: res.locals.requestId,
         // Reports whether a provider is configured, never the credential.
-        dataMode: extraction ? "live" : "fixture",
+        dataMode: extraction || search ? "live" : "fixture",
         data: {
           status: "ok",
           providers: {
             extraction: extraction ? "live" : "fixture",
             explanation: "fixture",
-            search: "fixture",
+            // Configured, not proven: this reports the pharmacy lookup only.
+            // savings-search is still unimplemented either way.
+            search: search ? "live" : "fixture",
           },
         },
       }),
@@ -325,6 +338,53 @@ export function createApp(
       );
     send(res, explanationResponse, buildExplanation(record.case));
   });
+
+  api.post(
+    "/cases/:id/pharmacies",
+    // The plan caps searches per case; the key is the demo workspace, which is
+    // what holds the cases, so a burst of reruns cannot drain search credit.
+    rateLimit(
+      "pharmacies",
+      options.limits?.pharmacies ?? { limit: 12, windowMs: 10 * 60_000 },
+      now,
+    ),
+    async (req, res) => {
+      // Ownership is still checked: the lookup is reached through a case, and
+      // only its own patient session may spend a search on it.
+      // String(): with a middleware in front, Express widens the param type.
+      ownedCase(res, String(req.params.id));
+      const input = parseBody(pharmacySearchRequest, req.body);
+      if (!search)
+        throw new ApiError(
+          "PROVIDER_UNAVAILABLE",
+          "Pharmacy search is not configured, so no pharmacies can be listed.",
+        );
+      // A cached lookup is labelled "cached", never "live": the response must
+      // say when it is up to 15 minutes old.
+      const cached = pharmacyCache.get(input.location);
+      if (cached) {
+        res.locals.dataMode = "cached";
+        return send(res, pharmaciesResponse, cached);
+      }
+      const lookup = await findPharmacies(search, input.location, {
+        fetchImpl: options.fetchImpl,
+        now,
+        // Adapter-generated reason only; never label or location content.
+        onError: (message) => {
+          res.locals.providerError = message;
+        },
+      });
+      // No stale or invented list on failure: an explicit unavailable state.
+      if (!lookup)
+        throw new ApiError(
+          "PROVIDER_UNAVAILABLE",
+          "The pharmacy search provider is unavailable. Try again shortly.",
+        );
+      pharmacyCache.set(input.location, lookup);
+      res.locals.dataMode = "live";
+      send(res, pharmaciesResponse, lookup);
+    },
+  );
 
   api.delete("/cases/:id", (req, res) => {
     ownedCase(res, req.params.id);

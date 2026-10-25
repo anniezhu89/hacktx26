@@ -2,6 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createApp } from "./app";
 import { geminiConfig } from "./providers/gemini";
+import { serpApiConfig } from "./providers/serpapi";
 import { SessionStore } from "./session";
 import { CaseStore } from "./store";
 
@@ -26,13 +27,15 @@ setInterval(() => {
 }, 60_000).unref();
 
 const extraction = geminiConfig();
-createApp(undefined, { cases, sessions, extraction }).listen(
+const search = serpApiConfig();
+createApp(undefined, { cases, sessions, extraction, search }).listen(
   port,
   "127.0.0.1",
   () =>
     console.log(
       `LabelBridge server: http://127.0.0.1:${port} — image extraction: ` +
         `${extraction ? `live (${extraction.model})` : "fixture (no GEMINI_API_KEY)"}; ` +
+        `pharmacy search: ${search ? "live" : "fixture (no SERPAPI_API_KEY)"}; ` +
         `in-memory demo state is lost on restart`,
     ),
 );

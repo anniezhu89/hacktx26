@@ -6,6 +6,9 @@ import {
 import type { Infer } from "../errors";
 import type { Extraction } from "../extract";
 import type { ValidatedImage } from "../image";
+import { ProviderError } from "./shared";
+
+export { ProviderError };
 
 type Key = Infer<typeof fieldKey>;
 type Crop = Infer<typeof cropSchema>;
@@ -168,17 +171,6 @@ export function mapExtraction(payload: unknown): Extraction {
         .slice(0, 10)
     : [];
   return { fields, questions };
-}
-
-export class ProviderError extends Error {
-  constructor(
-    message: string,
-    readonly retryable: boolean,
-    /** Credential/request faults: no retry and no other model will help. */
-    readonly fatal = false,
-  ) {
-    super(message);
-  }
 }
 
 type Fetch = typeof fetch;

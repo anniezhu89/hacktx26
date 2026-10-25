@@ -51,3 +51,18 @@ v1.2 review follow-ups (contract helpers updated):
 - `applyTaskAction`: the patient may release a supporter-owned task once sharing is off, so it is not stranded.
 - Please stub `PATCH /api/cases/:id/sharing` and `GET /api/shared` as NOT_IMPLEMENTED until built; today they fall through to NOT_FOUND, which the frontend has to probe to tell apart from a missing case.
 - Redaction in `sharedView` is a guardrail, not a guarantee: it matches exact values (case-insensitive, whole-word, single digits included) and misses paraphrases or spacing variants such as "0.5mg" for "0.5 mg". Task text should never quote label values in the first place.
+
+## Contract v1.4 (additive, pharmacy lookup)
+
+`@labelbridge/contracts` 1.4.0. Wire `contractVersion` stays `"1"`: all additions are new objects and one widened enum, so existing payloads remain valid. Fixture added: `pharmacies.json` (fictional pharmacies). Implemented in this increment on both sides — `POST /api/cases/:id/pharmacies` in `apps/api` and `Pharmacies.tsx` in `apps/web` — so nothing is pending for either implementer; this entry records the shared decisions.
+
+New: `coarseLocation`, `pharmacy`, `pharmacyLookup`, `pharmacySearchRequest`, `pharmaciesResponse`. Changed: `healthResponse.providers.search` widened from literal `"fixture"` to `"fixture" | "live"`.
+
+Rules that live in the contract, not only in the adapter:
+
+- `coarseLocation` is an allowlist: a 5-digit ZIP or a place name. A street address is rejected rather than forwarded, because the search provider is a third party and the plan permits only a nonidentifying location. Validate with this schema on both sides; the frontend uses it before sending so nothing leaves the browser.
+- `pharmacySearchRequest` carries **no `expectedRevision`**, unlike every other `POST /api/cases/:id/*`. The list derives from the location alone, so a revision would imply a dependency that does not exist and would throw away a valid list whenever a task or sharing change bumped the case. Do not add one back without changing the UI accordingly.
+- `pharmacyLookup.ordering` is the literal `"source_order"` and there is no distance field anywhere. A coarse location gives no point to measure from, so nothing may be presented as the "closest" pharmacy. If precise coordinates are ever collected, that is a new contract decision with its own privacy consequences, not a UI tweak.
+- `status: "location_not_recognised"` exists because the provider answers an unusable location with a successful-looking list of pharmacies in unrelated states (see `docs/verification.md`). Treat it as a distinct state; `results` must be empty unless `status` is `"ok"`.
+- `hoursText` is verbatim source text. Do not parse it into an "open now" badge: the data goes stale and sending someone to a closed pharmacy is a real harm.
+- `providers.search: "live"` means only that the search adapter is configured. `savings-search` is still unimplemented and returns `NOT_IMPLEMENTED`; do not read the health flag as a claim about it.
