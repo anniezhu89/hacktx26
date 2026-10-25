@@ -1,0 +1,120 @@
+{
+  "note": "Synthetic demo only. Dates are generated relative to the fixture clock; none of these opportunities or addresses is a real event.",
+  "origin": { "latitude": 30.2672, "longitude": -97.7431 },
+  "venues": {
+    "100 Demo Plaza, Austin, TX": {
+      "latitude": 30.2772,
+      "longitude": -97.7431
+    },
+    "200 Example Hall, Austin, TX": {
+      "latitude": 30.2872,
+      "longitude": -97.7431
+    },
+    "900 Distant Demo Road, Austin, TX": {
+      "latitude": 31.2672,
+      "longitude": -97.7431
+    }
+  },
+  "events": [
+    {
+      "title": "Fictional community health workshop",
+      "category": "health_workshops",
+      "dayOffset": 3,
+      "time": "10:00 AM",
+      "address": "100 Demo Plaza, Austin, TX",
+      "venue": "Demo Learning Hall",
+      "description": "A fictional introduction to community health resources. Free admission. Registration required.",
+      "price": "Free admission",
+      "url": "https://example.org/labelbridge/community/health-workshop"
+    },
+    {
+      "title": "Fictional benefits assistance session",
+      "category": "benefits_assistance",
+      "dayOffset": 5,
+      "address": "200 Example Hall, Austin, TX",
+      "venue": "Example Support Hall",
+      "description": "A fictional benefits information session. Eligibility has not been assessed.",
+      "url": "https://example.org/labelbridge/community/benefits"
+    },
+    {
+      "title": "Fictional volunteer orientation",
+      "category": "volunteering",
+      "dayOffset": 6,
+      "address": "100 Demo Plaza, Austin, TX",
+      "description": "A fictional volunteer information session.",
+      "url": "https://example.org/labelbridge/community/volunteer"
+    },
+    {
+      "title": "Fictional community meal",
+      "category": "meals_assistance",
+      "dayOffset": 2,
+      "address": "200 Example Hall, Austin, TX",
+      "description": "A fictional community meal. Free admission.",
+      "price": "Free admission",
+      "url": "https://example.org/labelbridge/community/meal"
+    },
+    {
+      "title": "Fictional social activity",
+      "category": "accessible_activities",
+      "dayOffset": 4,
+      "address": "100 Demo Plaza, Austin, TX",
+      "description": "A fictional social activity; accessibility arrangements are not listed.",
+      "url": "https://example.org/labelbridge/community/activity"
+    },
+    {
+      "title": "Fictional online resource workshop",
+      "category": "health_workshops",
+      "dayOffset": 7,
+      "address": "Online event",
+      "description": "A fictional online event.",
+      "url": "https://example.org/labelbridge/community/online"
+    },
+    {
+      "title": "Fictional event with an unknown venue",
+      "category": "health_workshops",
+      "dayOffset": 8,
+      "description": "The venue address has not been published.",
+      "url": "https://example.org/labelbridge/community/unknown-venue"
+    },
+    {
+      "title": "Fictional distant workshop",
+      "category": "health_workshops",
+      "dayOffset": 4,
+      "address": "900 Distant Demo Road, Austin, TX",
+      "description": "A fictional event outside the default radius.",
+      "url": "https://example.org/labelbridge/community/distant"
+    }
+  ],
+  "resources": [
+    {
+      "title": "Fictional ongoing health resource calendar",
+      "category": "health_workshops",
+      "description": "An ongoing fictional resource. Opening hours are not event dates.",
+      "url": "https://example.org/labelbridge/community/calendar"
+    },
+    {
+      "title": "Fictional ongoing benefits information",
+      "category": "benefits_assistance",
+      "description": "An ongoing fictional benefits information page; cost and eligibility are not listed.",
+      "url": "https://example.org/labelbridge/community/benefits-resource"
+    },
+    {
+      "title": "Fictional ongoing volunteer opportunities",
+      "category": "volunteering",
+      "description": "An ongoing fictional volunteer resource.",
+      "url": "https://example.org/labelbridge/community/volunteer-resource"
+    },
+    {
+      "title": "Fictional ongoing meal assistance",
+      "category": "meals_assistance",
+      "description": "An ongoing fictional assistance resource.",
+      "url": "https://example.org/labelbridge/community/meal-resource"
+    },
+    {
+      "title": "Fictional ongoing social resources",
+      "category": "accessible_activities",
+      "description": "An ongoing fictional recreation resource. Ask the organizer about accessibility.",
+      "url": "https://example.org/labelbridge/community/social-resource"
+    }
+  ]
+}

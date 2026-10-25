@@ -1,0 +1,13 @@
+# Community Resource Board implementation checklist
+
+Baseline: `9d3e874`, clean working tree. Existing `npm run check` PASS (229 unit/API tests, 12 fixtures, production build); `npm run smoke` PASS (16 Chromium tests). Dedicated branch: feature/community-resource-board. Existing storage is in-memory; no SQLite/database migration applies. Existing accounts have no location field. No standalone insurance-document workflow exists in this checkout; its regression coverage cannot be claimed.
+
+- [x] A: Add isolated community Zod contracts, synthetic retrieval fixtures, store and timezone/distance validation. Files: packages/contracts/src/community.ts and index.ts, workspace version pins/lockfile, apps/api/src/community/_, tests/unit/community/_, fixtures/community/*.
+- [ ] B: Add isolated SerpApi events/details/resource adapters, Meta Muse structured extraction with evidence validation, OpenCage geocoding, bounded/coalesced retrieval/cache and routes. Wire only AppOptions, route registration and server feature flag; existing medication providers/prompts stay unchanged. Add provider config documentation and tests.
+- [ ] C: Add apps/web/src/community/* and a conditional Community navigation entry; optional profile location field and community-only saved preferences; preserve the current app shell and existing pages. Add browser coverage and final verification.
+
+Default flag: COMMUNITY_BOARD_ENABLED=0. No community route/provider failure may prevent medication startup. Explicit fixture mode is synthetic; live events without geocoding go only to a distance-unverified section. No arbitrary organizer-page fetches: safely validated source links only. Ongoing resources are distinct from dated events. Existing sharing supports private medication data, so community shares use an explicit copied public listing link, never private attendance or automatic messages.
+
+Provider documentation checked: SerpApi google_events and google_event_details, Meta Model API structured chat completion, OpenCage JSON geocoding, Temporal ZonedDateTime. Current Meta/SerpApi keys are present; OpenCage key is absent. All routine tests use fixtures. Independent reviewer has not been assigned; no other agents will be launched automatically. Every new commit must pass commit:verified and clean detached-SHA checks before advancing.
+
+Foundation author validation: 21 targeted community tests PASS. Tests exposed and corrected coordinate validation of richer origin records and ISO date parsing at the T boundary. Full author and clean committed-SHA outcomes are recorded by commit:verified in .verification/<SHA>.json. The existing profile location field remains part of the UI/profile integration increment.

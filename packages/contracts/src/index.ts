@@ -1054,3 +1054,6 @@ export type MedicineCandidate = z.infer<typeof medicineCandidate>;
 export type MedicineInfo = z.infer<typeof medicineInfo>;
 export type MedicineSource = z.infer<typeof medicineSource>;
 export type SourcePassage = z.infer<typeof sourcePassage>;
+
+// v1.7: isolated additive community board contracts.
+export * from "./community";

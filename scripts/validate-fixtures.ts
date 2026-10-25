@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs";
 import {
   caseSchema,
+  communityCategory,
+  communityPoint,
+  communityUrl,
   explanation,
   savingsOption,
   reviewRequest,
@@ -32,4 +35,14 @@ const badCitation = read("medicine-info");
 badCitation.sections[0].summary.points[0].passageIds = ["invented-id"];
 if (medicineInfo.safeParse(badCitation).success)
   throw new Error("medicine-info must reject invented citations");
-console.log("All twelve synthetic contract fixtures validated.");
+const communitySeed = read("community/retrieval");
+communityPoint.parse(communitySeed.origin);
+for (const point of Object.values(communitySeed.venues))
+  communityPoint.parse(point);
+for (const item of [...communitySeed.events, ...communitySeed.resources]) {
+  communityCategory.parse(item.category);
+  communityUrl.parse(item.url);
+}
+console.log(
+  "Twelve existing fixtures and the synthetic community retrieval seed validated.",
+);
