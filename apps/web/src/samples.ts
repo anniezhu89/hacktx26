@@ -40,8 +40,8 @@ export const SAMPLES: SampleLabel[] = [
     description: "Every field is readable.",
     imageUrl: "/samples/clear-label.svg",
     imageAlt:
-      "Fictional label: Fictional Demo Tablet, 0.5 mg tablet, quantity 30, take one tablet twice daily as needed.",
-    text: `${header}\nFictional Demo Tablet\n0.5 mg tablet\nQty: 30\nTake one tablet twice daily as needed.`,
+      "Fictional label: Levothyroxine Sodium, 0.05 mg tablet, quantity 30, take one tablet twice daily as needed.",
+    text: `${header}\nLevothyroxine Sodium\n0.05 mg tablet\nQty: 30\nTake one tablet twice daily as needed.`,
     crops,
     fixture: clear,
   },
@@ -51,8 +51,8 @@ export const SAMPLES: SampleLabel[] = [
     description: "The strength is smudged and cannot be read.",
     imageUrl: "/samples/unreadable-label.svg",
     imageAlt:
-      "Fictional label: Fictional Demo Tablet, strength smudged and unreadable, tablet, quantity 30, take one tablet twice daily as needed.",
-    text: `${header}\nFictional Demo Tablet\n[smudged] tablet\nQty: 30\nTake one tablet twice daily as needed.`,
+      "Fictional label: Levothyroxine Sodium, strength smudged and unreadable, tablet, quantity 30, take one tablet twice daily as needed.",
+    text: `${header}\nLevothyroxine Sodium\n[smudged] tablet\nQty: 30\nTake one tablet twice daily as needed.`,
     crops,
     fixture: caseSchema.parse(unreadableFixture),
   },
@@ -62,8 +62,8 @@ export const SAMPLES: SampleLabel[] = [
     description: "Everything is readable, but the directions are vague.",
     imageUrl: "/samples/unclear-label.svg",
     imageAlt:
-      "Fictional label: Fictional Demo Tablet, 0.5 mg tablet, quantity 30, use as directed.",
-    text: `${header}\nFictional Demo Tablet\n0.5 mg tablet\nQty: 30\nUse as directed.`,
+      "Fictional label: Levothyroxine Sodium, 0.05 mg tablet, quantity 30, use as directed.",
+    text: `${header}\nLevothyroxine Sodium\n0.05 mg tablet\nQty: 30\nUse as directed.`,
     crops,
     fixture: unclear,
   },

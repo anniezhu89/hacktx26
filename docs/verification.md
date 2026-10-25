@@ -224,3 +224,33 @@ Live evidence, against the built server with real credentials:
 - Request logs contain route, status, latency and provider mode only; a scan for the medication names and the returned source names found zero occurrences.
 
 Known gaps and limitations: **the built-in demo samples still use the invented name "Fictional Demo Tablet", so the demo's own savings path currently returns `product_not_identified`.** Switching the samples to a real generic is the agreed next increment and is required before this feature demonstrates anything positive. The allowlist is a 30-entry seed, not a drug database, so most real medications will be refused; that is the intended trade, but it means coverage is low. Host allowlisting means a legitimate program on an unlisted site is dropped silently apart from the count in `notes`. No price, copay comparison or eligibility determination exists yet; `copay` is accepted by the contract and currently unused. The changed Savings UI has **not** been exercised in a browser in this increment. No independent review of this change has been done.
+
+## Demo medication identity, and savings fixes found by exercising the UI
+
+Date: 2026-10-24.
+
+The savings guard was refusing the project's own demo labels, which named an invented product ("Fictional Demo Tablet" in the sample text, "LEVOTHIX" on the rendered label images). That is the correct refusal — searching an invented name returns a real different medication's results — but it meant the feature could only ever demonstrate its refusal.
+
+The samples now use **levothyroxine sodium**, chosen because real levothyroxine labels print the strength both as micrograms and as a decimal milligram value, which preserves the existing decimal-preservation fixture (`0.05 mg`) and the mcg-versus-mg conflict fixture (25 mcg against 50 mcg) rather than losing that safety coverage. The patient, prescriber, pharmacy, prescription number and directions remain fictional, so the demo data is still synthetic. Changed: `fixtures/{clear,unreadable,ambiguous,review-submitted}.json`, `apps/web/src/samples.ts`, `apps/web/public/samples/*.svg`, `scripts/make-sample-labels.mjs` with `fixtures/labels/*.png` regenerated, and the affected string assertions across the unit tests. `tests/unit/api/savings.test.ts` deliberately keeps "LEVOTHIX" and "Fictional Demo Tablet": they are the invented-name cases the guard must keep refusing.
+
+Two test expectations changed as real consequences, not as accommodations:
+
+- `extract.test.ts` relied on the old product name containing the word "Tablet" for the dosage form to be read off the name line. The test text now says "Levothyroxine Sodium Tablet" so that path is still covered.
+- `contracts-v1-2.test.ts` relied on "Tablet" sitting inside the shared medication name to show that an unshared dosage form is redacted even there. That coverage is preserved by an added assertion that redacts "tablet" appearing as an ordinary word in task text.
+
+### A pre-existing extraction gap, confirmed not to be a regression
+
+Text intake does not read a medication name that sits on its own line: `apps/api/src/extract.ts` only derives a name from the text preceding a strength **on the same line**. Running the **old** sample text through the unchanged extractor returns `medicationName: null` as well, so this predates the rename. `docs/handoff.md` already recorded "a medication name on its own line" as a requested extraction fix that was never implemented. The consequence is that a patient must type the medication name into the field before confirming it; the field is editable and the flow works, but it is friction that the savings feature now makes visible. Not fixed in this increment.
+
+### Two defects found by exercising the UI in a browser
+
+The previous increment shipped without browser verification, and doing it here found both:
+
+- **A false "this is for a different product than your label" warning on every savings card.** The adapter claimed `matchedProduct.medicationName: "levothyroxine"`, and `productMatch` compares exact normalized strings, so a label confirmed as "Levothyroxine Sodium" read as a mismatch. Fixed by claiming no product attributes at all: a programme or resource page states no specific product, and which medication was searched for is already carried by `savingsLookup.product`. Regression test added that runs a mapped option through the real `productMatch` helper.
+- **A currency figure rendered directly beneath "No price available."** The verbatim source snippet is quoted as evidence, and a manufacturer snippet reads "Uninsured patients will pay $39.95 for a 30-day prescription". The snippet is kept, because quoting the source is the honest thing and is why a patient would click, but the card now says explicitly that any amount in the quoted text is the source's own wording for its own conditions, not a price for this prescription, and that eligibility was not checked.
+
+Browser evidence (scripted Chromium at 420px, outside the repository), against the built server with real credentials: the sample label is read, the medication name is typed and confirmed along with the other four fields, "Ways to save" unlocks, and a live search returns three results from `synthroidpro.com`, `unithroid.com` and `goodrx.com` under a "Live data" badge, with the ordering, no-prices and set-aside-results notes shown, no price rendered as an amount, and no mismatch warning. A repeated search within the cache window shows "Cached data".
+
+Automated checks: `npm run check` PASS, 177 tests.
+
+Known gaps: the extraction gap above is unfixed. The allowlist remains a 30-entry seed, so most real medications are still refused. No amounts, copay comparison or eligibility determination exist. No independent review of this change has been done.

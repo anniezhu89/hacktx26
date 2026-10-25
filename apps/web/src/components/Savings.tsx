@@ -21,6 +21,10 @@ const BASIS: Record<SavingsOption["priceBasis"], string> = {
   unknown: "No price available",
 };
 
+/** A currency figure in the source's quoted wording, e.g. "$39.95". */
+const quotesAnAmount = (evidence: string | null) =>
+  !!evidence && /[$£€]\s?\d/.test(evidence);
+
 const MATCH_TEXT = {
   match: "matches",
   mismatch: "does not match",
@@ -62,6 +66,15 @@ function OptionCard({
           price.
           {!view.comparable &&
             " Some product details could not be checked, so do not compare this price."}
+        </p>
+      ) : quotesAnAmount(option.sourceEvidence) ? (
+        // The source's own wording is quoted below and may contain a figure.
+        // Saying only "no price available" above a visible "$39.95" invites
+        // exactly the misreading this screen exists to prevent.
+        <p>
+          {BASIS.unknown}. Any amount in the quoted text below is the
+          source&rsquo;s own wording for its own conditions, not a price for
+          your prescription, and we have not checked whether you qualify.
         </p>
       ) : (
         <p>{BASIS.unknown}.</p>

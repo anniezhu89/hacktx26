@@ -148,10 +148,14 @@ function mapResults(
       url: str(entry.link)!,
       retrievedAt,
       matchedProduct: {
-        // Only the generic is claimed to match. Strength, form and quantity
-        // are left unknown because the source did not state them for this
-        // result, and guessing them is what makes a price dangerous.
-        medicationName: generic,
+        // Every attribute stays null, including the name. These are programme
+        // and resource pages: the source states no specific product, so there
+        // is nothing to claim. Asserting the generic here was worse than
+        // useless — `productMatch` compares exact strings, so "levothyroxine"
+        // against a label reading "Levothyroxine Sodium" rendered a false
+        // "this is for a different product than your label" warning.
+        // Which medication was searched for is carried by `lookup.product`.
+        medicationName: null,
         strength: null,
         dosageForm: null,
         quantity: null,

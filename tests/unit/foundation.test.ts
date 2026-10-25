@@ -29,7 +29,7 @@ describe("shared boundaries", () => {
   });
   it("preserves decimal units and exact directions without implying review", () => {
     const c = caseSchema.parse(fixture("clear"));
-    expect(c.fields.find((f) => f.key === "strength")?.value).toBe("0.5 mg");
+    expect(c.fields.find((f) => f.key === "strength")?.value).toBe("0.05 mg");
     expect(c.fields.find((f) => f.key === "exactDirections")?.value).toBe(
       "Take one tablet twice daily as needed.",
     );

@@ -58,7 +58,7 @@ describe("reading help in the mock", () => {
       proposals: [
         {
           key: "strength",
-          visibleText: "0.5 mg",
+          visibleText: "0.05 mg",
           evidence: "Read from the image.",
         },
       ],
@@ -66,7 +66,7 @@ describe("reading help in the mock", () => {
     const { data: mine } = await client.listCaseReviews(c.id);
     expect(mine[0]).toMatchObject({
       status: "submitted",
-      proposals: [{ visibleText: "0.5 mg" }],
+      proposals: [{ visibleText: "0.05 mg" }],
     });
 
     const { case: applied } = await client.updateFields(c.id, {
@@ -74,14 +74,14 @@ describe("reading help in the mock", () => {
       changes: [
         {
           key: "strength",
-          value: "0.5 mg",
+          value: "0.05 mg",
           reviewState: "unreviewed",
           fromReviewId: created.id,
         },
       ],
     });
     expect(field(applied, "strength")).toMatchObject({
-      value: "0.5 mg",
+      value: "0.05 mg",
       provenance: "volunteer",
       reviewState: "unreviewed",
     });
@@ -103,7 +103,7 @@ describe("reading help in the mock", () => {
     await client.respondToReview(r.id, {
       expectedRevision: 0,
       outcome: "submitted",
-      proposals: [{ key: "strength", visibleText: "0.5 mg", evidence: "x" }],
+      proposals: [{ key: "strength", visibleText: "0.05 mg", evidence: "x" }],
     });
     await expect(
       client.updateFields(c.id, {
@@ -145,7 +145,7 @@ describe("reading help in the mock", () => {
       client.respondToReview(r.id, {
         expectedRevision: 0,
         outcome: "submitted",
-        proposals: [{ key: "strength", visibleText: "0.5 mg", evidence: "x" }],
+        proposals: [{ key: "strength", visibleText: "0.05 mg", evidence: "x" }],
       }),
     ).rejects.toMatchObject({ code: "REVISION_CONFLICT" });
     const { data: again } = await client.createReview(c.id, {
@@ -232,8 +232,8 @@ describe("reading help in the mock", () => {
       consent: true,
     });
     const { data: view } = await client.claimReview(r.id);
-    // The typed line, not the extracted "0.5 mg".
-    expect(view.excerpts[0].textExcerpt).toBe("0.5 mg tablet");
+    // The typed line, not the extracted "0.05 mg".
+    expect(view.excerpts[0].textExcerpt).toBe("0.05 mg tablet");
   });
 
   it("rejects confirming a field in the same change that applies a reading", async () => {
@@ -247,7 +247,7 @@ describe("reading help in the mock", () => {
     await client.respondToReview(r.id, {
       expectedRevision: 0,
       outcome: "submitted",
-      proposals: [{ key: "strength", visibleText: "0.5 mg", evidence: "x" }],
+      proposals: [{ key: "strength", visibleText: "0.05 mg", evidence: "x" }],
     });
     await expect(
       client.updateFields(c.id, {
@@ -255,7 +255,7 @@ describe("reading help in the mock", () => {
         changes: [
           {
             key: "strength",
-            value: "0.5 mg",
+            value: "0.05 mg",
             reviewState: "user_confirmed",
             fromReviewId: r.id,
           },

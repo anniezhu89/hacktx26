@@ -51,7 +51,7 @@ describe("shared support in the mock", () => {
     expect(view.fields).toEqual([
       {
         key: "medicationName",
-        value: "Fictional Demo Tablet",
+        value: "Levothyroxine Sodium",
         reviewState: "user_confirmed",
       },
     ]);

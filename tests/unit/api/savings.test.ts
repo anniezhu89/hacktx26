@@ -10,6 +10,7 @@ import { identifyGeneric } from "../../../apps/api/src/providers/generic-drugs";
 import { createApp, type LogEntry } from "../../../apps/api/src/app";
 import type { SerpApiConfig } from "../../../apps/api/src/providers/serpapi";
 import { savingsResponse } from "../../../packages/contracts/src/index";
+import { productMatch } from "../../../apps/web/src/lib/understand";
 
 const config: SerpApiConfig = {
   apiKey: "test-key",
@@ -118,15 +119,34 @@ describe("mapping a savings lookup", () => {
     expect(result?.options[0].sourceEvidence).toBe(organic[0].snippet);
   });
 
-  it("claims only the generic as a matched product", async () => {
+  it("claims no product attributes at all", async () => {
     const result = await lookup(organic);
+    // Including the name. A programme page states no specific product, and
+    // asserting the generic made productMatch report a false mismatch
+    // against a label reading "Levothyroxine Sodium".
     expect(result?.options[0].matchedProduct).toEqual({
-      medicationName: "levothyroxine",
+      medicationName: null,
       strength: null,
       dosageForm: null,
       quantity: null,
       location: null,
     });
+  });
+
+  it("does not render as a different product than the label", async () => {
+    const result = await lookup(organic);
+    const fields = [
+      {
+        key: "medicationName" as const,
+        rawText: "Levothyroxine Sodium",
+        value: "Levothyroxine Sodium",
+        evidence: "Levothyroxine Sodium",
+        crop: null,
+        provenance: "user" as const,
+        reviewState: "user_confirmed" as const,
+      },
+    ];
+    expect(productMatch(result!.options[0], fields).mismatch).toBe(false);
   });
 
   it("marks eligibility as unassessed", async () => {

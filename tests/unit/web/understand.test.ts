@@ -75,8 +75,8 @@ describe("explanation meaning guard", () => {
 
 describe("savings product matching", () => {
   const product = {
-    medicationName: "Fictional Demo Tablet",
-    strength: "0.5 mg",
+    medicationName: "Levothyroxine Sodium",
+    strength: "0.05 mg",
     dosageForm: "tablet",
     quantity: "30",
     location: null,
@@ -126,8 +126,8 @@ describe("savings price view", () => {
       matchedProduct: { location: null, ...matchedProduct },
     });
   const same = {
-    medicationName: "Fictional Demo Tablet",
-    strength: "0.5 mg",
+    medicationName: "Levothyroxine Sodium",
+    strength: "0.05 mg",
     dosageForm: "tablet",
     quantity: "30",
   };

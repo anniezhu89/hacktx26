@@ -43,7 +43,7 @@ describe("field conditions", () => {
     for (const s of SAMPLES)
       expect(caseSchema.safeParse(s.fixture).success).toBe(true);
     expect(field(sample("clear").fixture, "strength")).toMatchObject({
-      value: "0.5 mg",
+      value: "0.05 mg",
     });
     expect(field(sample("unclear").fixture, "exactDirections")).toMatchObject({
       value: "Use as directed.",
@@ -105,7 +105,7 @@ describe("contract-valid mock API", () => {
     expect(result.case.revision).toBe(0);
     expect(result.case.expiresAt).toBe("2026-10-24T21:00:00.000Z");
     expect(field(result.case, "strength")).toMatchObject({
-      value: "0.5 mg",
+      value: "0.05 mg",
       reviewState: "unreviewed",
       crop: sample("clear").crops.strength,
     });

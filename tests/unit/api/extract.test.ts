@@ -10,8 +10,8 @@ describe("text extraction", () => {
   it("extracts labelled fields verbatim and never pre-confirms them", () => {
     const result = extractFromText(
       [
-        "Medication: Fictional Demo Tablet",
-        "Strength: 0.5 mg",
+        "Medication: Levothyroxine Sodium",
+        "Strength: 0.05 mg",
         "Form: tablet",
         "Quantity: 30",
         "Directions: Take one tablet twice daily as needed.",
@@ -20,8 +20,8 @@ describe("text extraction", () => {
     expect(
       Object.fromEntries(result.fields.map((f) => [f.key, f.value])),
     ).toEqual({
-      medicationName: "Fictional Demo Tablet",
-      strength: "0.5 mg",
+      medicationName: "Levothyroxine Sodium",
+      strength: "0.05 mg",
       dosageForm: "tablet",
       quantity: "30",
       exactDirections: "Take one tablet twice daily as needed.",
@@ -37,9 +37,11 @@ describe("text extraction", () => {
 
   it("reads an unlabelled label line without altering units", () => {
     const text =
-      "Fictional Demo Tablet 0.5 mg\nTake one tablet twice daily as needed.\nQty: 30";
-    expect(value(text, "medicationName")?.value).toBe("Fictional Demo Tablet");
-    expect(value(text, "strength")?.value).toBe("0.5 mg");
+      "Levothyroxine Sodium Tablet 0.05 mg\nTake one tablet twice daily as needed.\nQty: 30";
+    expect(value(text, "medicationName")?.value).toBe(
+      "Levothyroxine Sodium Tablet",
+    );
+    expect(value(text, "strength")?.value).toBe("0.05 mg");
     expect(value(text, "dosageForm")?.value).toBe("Tablet");
     expect(value(text, "quantity")?.value).toBe("30");
     expect(value(text, "exactDirections")?.value).toBe(
@@ -52,9 +54,9 @@ describe("text extraction", () => {
     for (const text of [
       "Strength: [unreadable]",
       "Strength: 0.5",
-      "Fictional Demo Tablet .5 mg",
-      "Fictional Demo Tablet 0,5 mg",
-      "Fictional Demo Tablet 5 mg\nAlso labelled 10 mg",
+      "Levothyroxine Sodium .5 mg",
+      "Levothyroxine Sodium 0,5 mg",
+      "Levothyroxine Sodium 5 mg\nAlso labelled 10 mg",
     ]) {
       const result = extractFromText(text);
       const strength = result.fields.find((f) => f.key === "strength");
@@ -96,7 +98,7 @@ describe("text extraction", () => {
   });
 
   it("does not guess quantity from unlabelled numbers", () => {
-    expect(value("Fictional Demo Tablet 1 mg\n30", "quantity")).toMatchObject({
+    expect(value("Levothyroxine Sodium 1 mg\n30", "quantity")).toMatchObject({
       value: null,
       reviewState: "unresolved",
     });

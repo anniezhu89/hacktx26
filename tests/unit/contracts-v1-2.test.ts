@@ -222,7 +222,7 @@ describe("contract v1.2 review fixes", () => {
     expect(view.fields).toEqual([
       {
         key: "medicationName",
-        value: "Fictional Demo Tablet",
+        value: "Levothyroxine Sodium",
         reviewState: "user_confirmed",
       },
       { key: "strength", value: null, reviewState: "unreviewed" },
@@ -235,14 +235,21 @@ describe("contract v1.2 review fixes", () => {
         ...proposal("ask"),
         category: "call_pharmacy",
         description:
-          "Ask if 0.5 MG comes in a 30 count of Fictional Demo Tablet",
+          "Ask if 0.05 MG comes in a 30 count of Levothyroxine Sodium",
       },
     ]);
     const [t] = sharedView(c)!.tasks;
-    // Dosage form ("tablet") is not shared, so it is redacted even inside
-    // the shared name: over-redaction is the safe direction.
+    // Strength and quantity are not shared, so neither survives in task text.
     expect(t.description).toBe(
-      "Ask if [not shared] comes in a [not shared] count of Fictional Demo [not shared]",
+      "Ask if [not shared] comes in a [not shared] count of Levothyroxine Sodium",
+    );
+    // The unshared dosage form is redacted wherever it appears, including as
+    // an ordinary word in task text: over-redaction is the safe direction.
+    const form = applyPlanTasks(confirmedShared(["medicationName"]), [
+      { ...proposal("form"), description: "Ask about the tablet count" },
+    ]);
+    expect(sharedView(form)!.tasks[0].description).toBe(
+      "Ask about the [not shared] count",
     );
     const c300 = applyPlanTasks(confirmedShared(["medicationName"]), [
       { ...proposal("n"), description: "Compare a 300 count" },

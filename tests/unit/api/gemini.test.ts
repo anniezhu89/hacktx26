@@ -35,18 +35,18 @@ const reply = (payload: unknown) =>
 const goodPayload = {
   fields: {
     medicationName: {
-      value: "LEVOTHIX",
-      evidence: "LEVOTHIX 0.5 mg tablet",
+      value: "LEVOTHYROXINE SODIUM",
+      evidence: "LEVOTHYROXINE SODIUM 0.05 mg tablet",
       box: [605, 45, 665, 163],
     },
     strength: {
-      value: "0.5 mg",
-      evidence: "LEVOTHIX 0.5 mg tablet",
+      value: "0.05 mg",
+      evidence: "LEVOTHYROXINE SODIUM 0.05 mg tablet",
       box: [605, 165, 665, 237],
     },
     dosageForm: {
       value: "tablet",
-      evidence: "LEVOTHIX 0.5 mg tablet",
+      evidence: "LEVOTHYROXINE SODIUM 0.05 mg tablet",
       box: null,
     },
     quantity: { value: "60", evidence: "Qty: 60", box: null },
@@ -98,8 +98,8 @@ describe("extraction mapping", () => {
     expect(
       Object.fromEntries(result.fields.map((f) => [f.key, f.value])),
     ).toEqual({
-      medicationName: "LEVOTHIX",
-      strength: "0.5 mg",
+      medicationName: "LEVOTHYROXINE SODIUM",
+      strength: "0.05 mg",
       dosageForm: "tablet",
       quantity: "60",
       exactDirections: "TAKE ONE TABLET BY MOUTH TWICE DAILY WITH FOOD",
@@ -185,7 +185,7 @@ describe("provider failure handling", () => {
       },
     });
     expect(result?.fields.find((f) => f.key === "strength")?.value).toBe(
-      "0.5 mg",
+      "0.05 mg",
     );
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe(
@@ -284,11 +284,13 @@ describe("provider failure handling", () => {
     const errors: string[] = [];
     await extractFromImage(config, image, {
       fetchImpl: async () =>
-        new Response("PATIENT JAMIE DOE LEVOTHIX 0.5 mg", { status: 500 }),
+        new Response("PATIENT JAMIE DOE LEVOTHYROXINE SODIUM 0.05 mg", {
+          status: 500,
+        }),
       onError: (m) => errors.push(m),
     });
     for (const message of errors) {
-      expect(message).not.toMatch(/LEVOTHIX|JAMIE/);
+      expect(message).not.toMatch(/LEVOTHYROXINE SODIUM|JAMIE/);
     }
   });
 });
@@ -325,7 +327,7 @@ describe("intake with a configured extraction provider", () => {
     const body = caseResponse.parse(res.body);
     expect(body.dataMode).toBe("live");
     expect(body.data.fields.find((f) => f.key === "strength")?.value).toBe(
-      "0.5 mg",
+      "0.05 mg",
     );
     // Critical fields still need human review after a live read.
     expect(body.data.fields.every((f) => f.reviewState === "unreviewed")).toBe(
@@ -352,10 +354,11 @@ describe("intake with a configured extraction provider", () => {
 
   it("logs no label text when extraction fails", async () => {
     const { app, logs } = setup(
-      async () => new Response("LEVOTHIX 0.5 mg JAMIE DOE", { status: 500 }),
+      async () =>
+        new Response("LEVOTHYROXINE SODIUM 0.05 mg JAMIE DOE", { status: 500 }),
     );
     await upload(app);
-    expect(JSON.stringify(logs)).not.toMatch(/LEVOTHIX|JAMIE/);
+    expect(JSON.stringify(logs)).not.toMatch(/LEVOTHYROXINE SODIUM|JAMIE/);
   });
 
   it("treats instructions printed on a label as transcribed text, not commands", async () => {

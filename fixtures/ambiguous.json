@@ -12,19 +12,19 @@
   },
   "fields": [
     {
-      "value": "Fictional Demo Tablet",
+      "value": "Levothyroxine Sodium",
       "provenance": "ai",
-      "rawText": "Fictional Demo Tablet",
-      "evidence": "Fictional Demo Tablet",
+      "rawText": "Levothyroxine Sodium",
+      "evidence": "Levothyroxine Sodium",
       "reviewState": "unreviewed",
       "key": "medicationName",
       "crop": null
     },
     {
-      "value": "0.5 mg",
+      "value": "0.05 mg",
       "provenance": "ai",
-      "rawText": "0.5 mg",
-      "evidence": "0.5 mg",
+      "rawText": "0.05 mg",
+      "evidence": "0.05 mg",
       "reviewState": "unreviewed",
       "key": "strength",
       "crop": null

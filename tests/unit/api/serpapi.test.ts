@@ -120,7 +120,7 @@ describe("the request sent to the search provider", () => {
     expect(url.searchParams.get("q")).toBe("pharmacy near 78751");
     expect(url.searchParams.get("api_key")).toBe("test-key");
     // No medication, patient, prescriber or prescription data may appear.
-    expect(sent).not.toMatch(/LEVOTHIX|JAMIE|7741920|mcg|tablet/i);
+    expect(sent).not.toMatch(/LEVOTHYROXINE SODIUM|JAMIE|7741920|mcg|tablet/i);
   });
 
   it("never sends coordinates, because none are collected", async () => {
@@ -386,7 +386,7 @@ describe("POST /api/cases/:id/pharmacies", () => {
     const created = await agent
       .post("/api/cases")
       .send({
-        text: "LEVOTHIX 0.5 mg tablet\nTAKE ONE TABLET BY MOUTH TWICE DAILY\nQty: 60",
+        text: "LEVOTHYROXINE SODIUM 0.05 mg tablet\nTAKE ONE TABLET BY MOUTH TWICE DAILY\nQty: 60",
         fictionalDataAcknowledged: true,
       })
       .expect(201);
@@ -485,7 +485,7 @@ describe("POST /api/cases/:id/pharmacies", () => {
     const { agent, id } = await patientCase(app);
     const res = await agent
       .post(`/api/cases/${id}/pharmacies`)
-      .send({ location: "78751", medicationName: "LEVOTHIX" });
+      .send({ location: "78751", medicationName: "LEVOTHYROXINE SODIUM" });
     expect(res.status).toBe(400);
   });
 

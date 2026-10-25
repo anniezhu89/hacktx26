@@ -48,15 +48,15 @@ const labels = {
   clear: shell(`${header}
     <div class="pt">DOE, JAMIE Q.</div>
     <div class="sig">TAKE ONE TABLET BY MOUTH TWICE DAILY WITH FOOD</div>
-    <div class="drug">LEVOTHIX 0.5 mg tablet</div>
-    <div class="meta">Qty: 60 &nbsp;&nbsp; Generic for: Fictional Demo Tablet</div>
+    <div class="drug">LEVOTHYROXINE SODIUM 0.05 mg tablet</div>
+    <div class="meta">Qty: 60 &nbsp;&nbsp; Generic for: Levothyroxine Sodium</div>
     ${footer(2)}`),
 
   // Strength deliberately obscured: it must stay unresolved, never guessed.
   unreadable: shell(`${header}
     <div class="pt">DOE, JAMIE Q.</div>
     <div class="sig">TAKE ONE TABLET BY MOUTH EVERY MORNING</div>
-    <div class="drug">LEVOTHIX <span class="smudge">0.5 mg</span> tablet</div>
+    <div class="drug">LEVOTHYROXINE SODIUM <span class="smudge">0.05 mg</span> tablet</div>
     <div class="meta">Qty: 30</div>
     ${footer(1)}`),
 
@@ -64,8 +64,8 @@ const labels = {
   ambiguous: shell(`${header}
     <div class="pt">DOE, JAMIE Q.</div>
     <div class="sig">TAKE ONE TABLET BY MOUTH DAILY AS DIRECTED</div>
-    <div class="drug">LEVOTHIX 25 mcg tablet</div>
-    <div class="meta">Previously dispensed: LEVOTHIX 50 mcg tablet &nbsp;&nbsp; Qty: 90</div>
+    <div class="drug">LEVOTHYROXINE SODIUM 25 mcg tablet</div>
+    <div class="meta">Previously dispensed: LEVOTHYROXINE SODIUM 50 mcg tablet &nbsp;&nbsp; Qty: 90</div>
     ${footer(0)}`),
 };
 

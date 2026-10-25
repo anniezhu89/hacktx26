@@ -8,7 +8,7 @@
   "proposals": [
     {
       "key": "strength",
-      "visibleText": "0.5 mg",
+      "visibleText": "0.05 mg",
       "evidence": "Volunteer read the strength from the enlarged label excerpt."
     }
   ]

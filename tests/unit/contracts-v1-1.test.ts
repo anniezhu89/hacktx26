@@ -24,10 +24,10 @@ describe("contract v1.1 reviewer view", () => {
 
   it("rejects AI suggestions in excerpts", () => {
     const view = fixture("reviewer-view");
-    view.excerpts[0].value = "0.5 mg";
+    view.excerpts[0].value = "0.05 mg";
     expect(reviewerView.safeParse(view).success).toBe(false);
     const raw = fixture("reviewer-view");
-    raw.excerpts[0].rawText = "0.5 mg";
+    raw.excerpts[0].rawText = "0.05 mg";
     expect(reviewerView.safeParse(raw).success).toBe(false);
   });
 
@@ -64,7 +64,7 @@ describe("contract v1.1 volunteer provenance", () => {
       changes: [
         {
           key: "strength",
-          value: "0.5 mg",
+          value: "0.05 mg",
           reviewState: "unreviewed",
           fromReviewId: "synthetic-review",
         },
@@ -73,7 +73,7 @@ describe("contract v1.1 volunteer provenance", () => {
     });
     const field = (k: string) => next.fields.find((f) => f.key === k);
     expect(field("strength")).toMatchObject({
-      value: "0.5 mg",
+      value: "0.05 mg",
       provenance: "volunteer",
       reviewState: "unreviewed",
     });

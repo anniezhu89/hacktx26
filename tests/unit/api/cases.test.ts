@@ -11,8 +11,8 @@ import {
 import { syntheticJpeg, syntheticPng } from "./images";
 
 const clearText = [
-  "Medication: Fictional Demo Tablet",
-  "Strength: 0.5 mg",
+  "Medication: Levothyroxine Sodium",
+  "Strength: 0.05 mg",
   "Form: tablet",
   "Quantity: 30",
   "Directions: Take one tablet twice daily as needed.",
@@ -113,7 +113,7 @@ describe("demo sessions and case access", () => {
       tasks: [],
     });
     expect(body.data.fields.find((f) => f.key === "strength")?.value).toBe(
-      "0.5 mg",
+      "0.05 mg",
     );
   });
 
@@ -165,7 +165,7 @@ describe("demo sessions and case access", () => {
     expect(
       caseResponse.parse(res.body).data.fields.find((f) => f.key === "strength")
         ?.value,
-    ).toBe("0.5 mg");
+    ).toBe("0.05 mg");
   });
 });
 
@@ -176,7 +176,7 @@ describe("field review, revisions and explanation gate", () => {
     const confirm = {
       expectedRevision: 0,
       changes: [
-        { key: "strength", value: "0.5 mg", reviewState: "user_confirmed" },
+        { key: "strength", value: "0.05 mg", reviewState: "user_confirmed" },
       ],
     };
     const res = await patient
@@ -218,7 +218,7 @@ describe("field review, revisions and explanation gate", () => {
 
     const unreadable = await createCase(
       patient,
-      clearText.replace("Strength: 0.5 mg", "Strength: [unreadable]"),
+      clearText.replace("Strength: 0.05 mg", "Strength: [unreadable]"),
     );
     expect(unreadable.status).toBe("needs_help");
     const res = await patient
