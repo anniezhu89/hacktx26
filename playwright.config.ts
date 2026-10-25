@@ -13,6 +13,10 @@ export default defineConfig({
       url: `${baseURL}/api/health`,
       env: {
         PORT: String(port),
+        COMMUNITY_BOARD_ENABLED: "1",
+        COMMUNITY_DATA_MODE: "fixture",
+        META_API_KEY: "",
+        OPENCAGE_API_KEY: "",
         GEMINI_API_KEY: "",
         SERPAPI_API_KEY: "",
         LABELBRIDGE_REFERENCE_LOOKUPS: "0",

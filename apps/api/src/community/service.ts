@@ -317,7 +317,10 @@ export class CommunityService {
       );
     // Detail and saved views make no implicit radius/date assertion.
     return {
-      listing,
+      listing:
+        listing.dataMode === "fixture"
+          ? listing
+          : { ...listing, dataMode: "cached" },
       distanceMiles: null,
       distanceApproximate: false,
       section:

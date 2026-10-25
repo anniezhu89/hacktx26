@@ -5,15 +5,18 @@ import { ConfirmDialog, type ConfirmRequest } from "../ConfirmDialog";
 
 export function SettingsScreen({
   account,
+  communityEnabled = false,
   onTextSize,
   onSignedOut,
 }: {
   account: AccountSession;
+  communityEnabled?: boolean;
   onTextSize: (size: TextSize) => void;
   onSignedOut: () => void;
 }) {
   const me = account.account!;
   const [name, setName] = useState(me.name);
+  const [location, setLocation] = useState(me.location ?? "");
   const [size, setSize] = useState<TextSize>(me.textSize);
   const [supporter, setSupporter] = useState(me.uses.supporter);
   const [volunteer, setVolunteer] = useState(me.uses.volunteer);
@@ -28,6 +31,7 @@ export function SettingsScreen({
     if (
       await account.update({
         name: name.trim() || me.name,
+        ...(communityEnabled ? { location: location.trim() || null } : {}),
         textSize: size,
         uses: { supporter, volunteer },
       })
@@ -74,6 +78,21 @@ export function SettingsScreen({
               Demo accounts cannot change email.
             </span>
           </label>
+          {communityEnabled && (
+            <label>
+              Community location (city, state or ZIP)
+              <input
+                value={location}
+                maxLength={80}
+                onChange={(e) => setLocation(e.target.value)}
+                aria-describedby="profile-location-note"
+              />
+              <span id="profile-location-note" className="hint">
+                Optional coarse location for the Community board. Do not enter a
+                home address.
+              </span>
+            </label>
+          )}
           <h2>Reading preferences</h2>
           <fieldset>
             <legend>Text size</legend>

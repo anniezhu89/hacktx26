@@ -1,3 +1,5 @@
+import { CommunityBoard } from "./community/CommunityBoard";
+import { communityClient } from "./community/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fieldsRevisionOf, healthResponse } from "@labelbridge/contracts";
 import { api } from "./api";
@@ -80,7 +82,14 @@ function VolunteerPane() {
 
 type Step = "add" | "check" | "support";
 type Screen =
-  "add" | "labels" | "circle" | "settings" | "supporter" | "volunteer" | "auth";
+  | "add"
+  | "labels"
+  | "circle"
+  | "settings"
+  | "supporter"
+  | "volunteer"
+  | "auth"
+  | "community";
 
 const PERSONAS: [Role, string][] = [
   ["patient", "Patient"],
@@ -89,6 +98,15 @@ const PERSONAS: [Role, string][] = [
 ];
 
 export function App() {
+  const [communityEnabled, setCommunityEnabled] = useState(false);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    communityClient.config(ctrl.signal).then(
+      (config) => setCommunityEnabled(config.enabled),
+      () => undefined,
+    );
+    return () => ctrl.abort();
+  }, []);
   const account = useAccount(workspace);
   const me = account.account;
   const session = useCaseSession(api);
@@ -287,6 +305,8 @@ export function App() {
     ["settings", "Settings"],
   ];
 
+  if (communityEnabled) workspaceNav.push(["community", "Community"]);
+
   const flow = (
     <>
       {api.kind === "mock" && (
@@ -408,6 +428,7 @@ export function App() {
         return (
           <SettingsScreen
             account={account}
+            communityEnabled={communityEnabled}
             onTextSize={setTextSize}
             onSignedOut={signedOut}
           />
@@ -492,6 +513,15 @@ export function App() {
         <nav className="demo-nav" aria-label="Demo workspaces">
           <div className="shell">
             <span>Demo views</span>
+            {communityEnabled && (
+              <button
+                type="button"
+                aria-current={screen === "community" ? "page" : undefined}
+                onClick={() => go("community")}
+              >
+                Community
+              </button>
+            )}
             {PERSONAS.map(([id, label]) => (
               <button
                 key={id}
@@ -575,6 +605,12 @@ export function App() {
           onDone={afterSignIn}
           onGuest={() => go("add")}
           onTextSize={setTextSize}
+        />
+      ) : screen === "community" && communityEnabled ? (
+        <CommunityBoard
+          key={me?.id ?? "guest"}
+          account={account}
+          onSignIn={() => go("auth")}
         />
       ) : signedInScreen ? (
         signedInScreen

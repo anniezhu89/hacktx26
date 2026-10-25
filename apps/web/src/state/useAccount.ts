@@ -78,6 +78,7 @@ export function useAccount(client: WorkspaceClient) {
         () => client.deleteAccount(password),
         () => null,
       ),
+    refresh: () => run(() => client.me()),
     clearError: () => setState((s) => ({ ...s, error: null })),
   };
 }

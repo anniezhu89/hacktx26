@@ -98,6 +98,7 @@ export function createWorkspaceClient(fetchImpl: Fetch = fetch) {
     recover: (email: string) =>
       call(accountResponse, "/api/account/recovery", json("POST", { email })),
     updatePreferences: (body: {
+      location?: string | null;
       name?: string;
       uses?: Uses;
       textSize?: TextSize;

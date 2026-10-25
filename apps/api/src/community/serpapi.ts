@@ -4,7 +4,7 @@
 } from "@labelbridge/contracts";
 import { CommunityHttp, object, string, ProviderFailure } from "./http";
 import { queryCategory, type CommunityConfig } from "./config";
-import { dateText, type Candidate } from "./normalize";
+import { dateText, publicUrl, type Candidate } from "./normalize";
 export class SerpCommunity {
   constructor(
     private config: CommunityConfig,
@@ -102,6 +102,15 @@ export class SerpCommunity {
             if (!string(detail.title))
               throw new ProviderFailure("Event detail missing");
             c.previousDate = dateText(c.raw);
+            c.previousSourceUrl =
+              publicUrl(c.raw.description_source) ??
+              publicUrl(c.raw.link) ??
+              (Array.isArray(c.raw.ticket_info)
+                ? c.raw.ticket_info
+                    .map((t) => publicUrl(object(t).link))
+                    .find(Boolean)
+                : null) ??
+              null;
             c.raw = { ...c.raw, ...detail };
           } catch {
             warnings.push(

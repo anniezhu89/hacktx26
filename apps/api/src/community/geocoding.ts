@@ -12,6 +12,27 @@ export type GeocodedVenue = {
   timezone: string | null;
   dataMode: "live" | "fixture";
 };
+function verifiedTimezone(value: unknown) {
+  const zone = string(value);
+  if (!zone) return null;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: zone });
+    return zone;
+  } catch {
+    return null;
+  }
+}
+const normalized = (value: string) =>
+  value.toLowerCase().replace(/[^a-z0-9]/g, "");
+function stateMatches(location: string, components: Record<string, unknown>) {
+  const suffix = location.split(",")[1]?.trim();
+  if (!suffix) return true;
+  return (
+    normalized(suffix) ===
+      normalized(String(components.state_code ?? "").replace(/^US-/, "")) ||
+    normalized(suffix) === normalized(String(components.state ?? ""))
+  );
+}
 export class CommunityGeocoder {
   private cache = new Map<
     string,
@@ -86,6 +107,14 @@ export class CommunityGeocoder {
         : city.toLowerCase() !== location.split(",")[0].trim().toLowerCase()
     )
       return null;
+    if (
+      zip
+        ? c._type !== "postcode"
+        : !["city", "town", "village", "municipality"].includes(
+            String(c._type),
+          ) || !stateMatches(location, c)
+    )
+      return null;
     const point = communityPoint.safeParse({
       latitude: object(result.geometry).lat,
       longitude: object(result.geometry).lng,
@@ -96,7 +125,9 @@ export class CommunityGeocoder {
           label:
             [city, string(c.state_code)].filter(Boolean).join(", ") || location,
           accuracy: zip ? "zip_centroid" : "city_centroid",
-          timezone: string(object(object(result.annotations).timezone).name),
+          timezone: verifiedTimezone(
+            object(object(result.annotations).timezone).name,
+          ),
           dataMode: "live",
         }
       : null;
@@ -120,6 +151,47 @@ export class CommunityGeocoder {
       ["city", "town", "village", "road", "postcode"].includes(String(c._type))
     )
       return null;
+    const number = address.match(/\b\d+[a-z]?(?:-\d+[a-z]?)?\b/i)?.[0];
+    if (
+      !number ||
+      number.toLowerCase() !== String(c.house_number).toLowerCase()
+    )
+      return null;
+    const city = string(c.city) ?? string(c.town) ?? string(c.village);
+    if (!city || !normalized(address).includes(normalized(city))) return null;
+    const state =
+      /,\s*([A-Z]{2})(?:\s+\d{5})?(?:,?\s*(?:USA?|United States))?$/.exec(
+        address,
+      )?.[1];
+    if (
+      state &&
+      normalized(state) !==
+        normalized(String(c.state_code ?? "").replace(/^US-/, ""))
+    )
+      return null;
+    const abbreviations: Record<string, string> = {
+      street: "st",
+      road: "rd",
+      avenue: "ave",
+      boulevard: "blvd",
+      drive: "dr",
+      lane: "ln",
+      plaza: "plz",
+      highway: "hwy",
+      court: "ct",
+      place: "pl",
+      east: "e",
+      west: "w",
+      north: "n",
+      south: "s",
+    };
+    const road = (text: string) =>
+      normalized(
+        text
+          .toLowerCase()
+          .replace(/\b[a-z]+\b/g, (word) => abbreviations[word] ?? word),
+      );
+    if (!road(address).includes(road(String(c.road)))) return null;
     const point = communityPoint.safeParse({
       latitude: object(result.geometry).lat,
       longitude: object(result.geometry).lng,
@@ -127,7 +199,9 @@ export class CommunityGeocoder {
     return point.success
       ? {
           ...point.data,
-          timezone: string(object(object(result.annotations).timezone).name),
+          timezone: verifiedTimezone(
+            object(object(result.annotations).timezone).name,
+          ),
           dataMode: "live",
         }
       : null;

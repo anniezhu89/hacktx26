@@ -13,9 +13,12 @@ export type Candidate = {
   kind: CommunityListing["kind"];
   raw: Record<string, unknown>;
   previousDate: string | null;
+  previousSourceUrl?: string | null;
 };
 export const dateText = (raw: Record<string, unknown>) =>
-  string(object(raw.date).when) ?? string(raw.date);
+  string(object(raw.date).when) ??
+  string(object(raw.date).start_date) ??
+  string(raw.date);
 export function canonicalUrl(value: string) {
   const url = new URL(value);
   url.hash = "";
@@ -100,6 +103,12 @@ export function normalize(
   }).flatMap(([field, excerpt]) =>
     excerpt ? [{ field, excerpt, sourceUrl }] : [],
   );
+  if (candidate.previousDate && candidate.previousSourceUrl)
+    sourceEvidence.push({
+      field: "discoveryDateText",
+      excerpt: candidate.previousDate,
+      sourceUrl: candidate.previousSourceUrl,
+    });
   const dates =
     candidate.kind === "ongoing_resource"
       ? {

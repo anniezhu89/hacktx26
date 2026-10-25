@@ -110,6 +110,53 @@ describe("community source normalization and Muse boundaries", () => {
       sourceCheckedAt: null,
     });
   });
+  it("retains discovery and detail date evidence when they conflict", () => {
+    const c = {
+      ...candidate(),
+      previousDate: "October 27, 2026",
+      previousSourceUrl: "https://example.org/discovery",
+    };
+    const l = normalize(c, now, "live", "America/Chicago")!;
+    expect(l.dateStatus).toBe("conflicting");
+    expect(l.startAt).toBeNull();
+    expect(l.sourceEvidence).toEqual(
+      expect.arrayContaining([
+        {
+          field: "discoveryDateText",
+          excerpt: "October 27, 2026",
+          sourceUrl: "https://example.org/discovery",
+        },
+      ]),
+    );
+    expect(
+      normalize(
+        candidate({ date: { start_date: "Oct 28" } }),
+        now,
+        "live",
+        null,
+      ),
+    ).toMatchObject({ originalDateText: "Oct 28", dateStatus: "incomplete" });
+  });
+  it("retains explicitly labeled source facts with evidence", () => {
+    const l = normalize(
+      candidate({
+        description:
+          "Organizer: Fictional Helpers. Eligibility: Adults only. Languages: Spanish. Accessibility: Ask the organizer.",
+      }),
+      now,
+      "live",
+      null,
+    )!;
+    expect(l).toMatchObject({
+      organizer: "Fictional Helpers.",
+      eligibilityText: "Adults only.",
+      languageInfo: "Spanish.",
+      accessibilityInfo: "Ask the organizer.",
+    });
+    expect(
+      l.sourceEvidence.find((e) => e.field === "eligibilityText")?.excerpt,
+    ).toBe("Adults only.");
+  });
   it("allows grounded description selection without inventing facts", () => {
     const l = listing();
     const index = l.sourceEvidence.findIndex((e) => e.field === "description");
@@ -386,7 +433,7 @@ describe("community geographic adapter and public cache", () => {
       geometry: { lat: 30.2, lng: -97.7 },
       confidence: 9,
       components: {
-        _type: "city",
+        _type: "postcode",
         city: "Austin",
         state_code: "TX",
         postcode: "78701",
@@ -425,6 +472,52 @@ describe("community geographic adapter and public cache", () => {
     );
     expect(await ambiguous.origin("Austin, TX")).toBeNull();
   });
+  it("accepts a matching venue but rejects wrong house numbers, state and invalid timezone", async () => {
+    let house = "100";
+    let state = "TX";
+    let zone = "America/Chicago";
+    const f = vi.fn<typeof fetch>().mockImplementation(async () =>
+      Response.json({
+        status: { code: 200 },
+        results: [
+          {
+            geometry: { lat: 30.2, lng: -97.7 },
+            confidence: 9,
+            components: {
+              _type: "building",
+              house_number: house,
+              road: "Demo Plaza",
+              city: "Austin",
+              state_code: state,
+            },
+            annotations: { timezone: { name: zone } },
+          },
+        ],
+      }),
+    );
+    const geocoder = () =>
+      new CommunityGeocoder(
+        { ...config(), geoKey: "synthetic" },
+        http(f),
+        () => now,
+        0,
+      );
+    expect(await geocoder().venue("100 Demo Plaza, Austin, TX")).toMatchObject({
+      latitude: 30.2,
+      dataMode: "live",
+      timezone: "America/Chicago",
+    });
+    house = "101";
+    expect(await geocoder().venue("100 Demo Plaza, Austin, TX")).toBeNull();
+    house = "100";
+    state = "MN";
+    expect(await geocoder().venue("100 Demo Plaza, Austin, TX")).toBeNull();
+    state = "TX";
+    zone = "Invented/Zone";
+    expect(await geocoder().venue("100 Demo Plaza, Austin, TX")).toMatchObject({
+      timezone: null,
+    });
+  });
   it("fixture radius and free-only filters separate unknown and online locations", async () => {
     const s = new CommunityService(
       communityConfig({ COMMUNITY_DATA_MODE: "fixture" }),
@@ -458,6 +551,7 @@ describe("community geographic adapter and public cache", () => {
     expect(f).toHaveBeenCalledTimes(1);
     expect(a.items[0].section).toBe("distance_unverified");
     expect(b.filters.radiusMiles).toBe(10);
+    expect(s.detail(a.items[0].listing.id).listing.dataMode).toBe("cached");
     s.store.save("a", a.items[0].listing.id);
     const again = await s.search(filters, "b");
     expect(again.cache.status).toBe("cached");

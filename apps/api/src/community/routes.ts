@@ -95,20 +95,27 @@ export function registerCommunityRoutes(
   });
   const saved = (id: string) =>
     service.store.saved(id).map((l) => service.detail(l.id, id));
+  const sendSaved = (res: Parameters<RouteContext["send"]>[0], id: string) => {
+    const values = saved(id);
+    res.locals.dataMode = values.some((v) => v.listing.dataMode === "cached")
+      ? "cached"
+      : "fixture";
+    send(res, communitySavedResponse, values);
+  };
   api.get("/community/saved", (_req, res) => {
     const { account } = requireAccount(ctx, res);
-    send(res, communitySavedResponse, saved(account.id));
+    sendSaved(res, account.id);
   });
   api.post("/community/saved", (req, res) => {
     const { account } = requireAccount(ctx, res);
     const input = parseBody(communitySaveRequest, req.body);
     service.store.save(account.id, input.listingId);
-    send(res, communitySavedResponse, saved(account.id));
+    sendSaved(res, account.id);
   });
   api.delete("/community/saved/:id", (req, res) => {
     const { account } = requireAccount(ctx, res);
     service.store.remove(account.id, req.params.id);
-    send(res, communitySavedResponse, saved(account.id));
+    sendSaved(res, account.id);
   });
   api.get("/community/preferences", (_req, res) => {
     const { account } = requireAccount(ctx, res);
