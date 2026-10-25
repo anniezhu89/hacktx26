@@ -53,7 +53,7 @@ export function Pharmacies({
 
   return (
     <section aria-labelledby="pharmacies-heading" className="panel stack-sm">
-      <h3 id="pharmacies-heading">Find a pharmacy nearby</h3>
+      <h2 id="pharmacies-heading">Find a pharmacy nearby</h2>
       <p>
         Pharmacies listed near a ZIP code or city, from a public map source.
         Only the place you type is sent to that source: nothing from your label

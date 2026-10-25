@@ -83,7 +83,7 @@ function SharingForm({
   const current = caseData.sharing;
   return (
     <form noValidate onSubmit={submit} className="stack-sm">
-      <h4>What your supporter can see</h4>
+      <h3>What your supporter can see</h3>
       <p>
         Now:{" "}
         <strong>
@@ -240,7 +240,7 @@ export function SharedSupport({
 
   return (
     <section aria-labelledby="support-heading" className="panel stack-sm">
-      <h3 id="support-heading">Shared support</h3>
+      <h2 id="support-heading">Shared support</h2>
       <p>
         Plan practical help with a trusted supporter, such as rides, calls and
         paperwork. Nothing here changes your medication or your directions.
@@ -260,7 +260,7 @@ export function SharedSupport({
           />
 
           <form noValidate onSubmit={suggest} className="stack-sm">
-            <h4>Plan practical help</h4>
+            <h3>Plan practical help</h3>
             <div className="stack-sm">
               <label htmlFor="support-availability" className="field-label">
                 When is your supporter available? (optional)
@@ -349,7 +349,7 @@ export function SharedSupport({
 
           {currentPlan && currentPlan.tradeoffs.length > 0 && (
             <div className="stack-sm">
-              <h4>Things to weigh</h4>
+              <h3>Things to weigh</h3>
               <ul>
                 {currentPlan.tradeoffs.map((t) => (
                   <li key={t}>{t}</li>
@@ -358,7 +358,7 @@ export function SharedSupport({
             </div>
           )}
 
-          <h4>Tasks</h4>
+          <h3>Tasks</h3>
           <TaskList
             tasks={caseData.tasks}
             viewer="patient"

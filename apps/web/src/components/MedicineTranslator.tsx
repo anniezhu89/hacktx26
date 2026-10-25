@@ -354,7 +354,7 @@ export function MedicineTranslator({
         <span className="eyebrow">
           Medicine translator · General reference information
         </span>
-        <h3 id="translator-heading">Understand your medicine</h3>
+        <h2 id="translator-heading">Understand your medicine</h2>
         <p className="banner banner-blocked">
           <span aria-hidden="true">🔒 </span>Available after you confirm the
           medication name, strength, dosage form and directions. Nothing is
@@ -379,11 +379,11 @@ export function MedicineTranslator({
       <span className="eyebrow">
         Medicine translator · General reference information
       </span>
-      <h3 id="translator-heading">
+      <h2 id="translator-heading">
         {step === "info"
           ? "Understand your medicine"
           : "Confirm the reference medicine"}
-      </h3>
+      </h2>
       <div className="medicine-identity">
         <div>
           <b>{name}</b>
@@ -446,7 +446,7 @@ export function MedicineTranslator({
           )}
           {candidates?.status === "none" && (
             <div className="reference-state">
-              <h4>No reliable reference match</h4>
+              <h3>No reliable reference match</h3>
               <p>
                 We will not guess. Reference information is unavailable for this
                 name, including fictional medicines. Your confirmed label
@@ -456,7 +456,7 @@ export function MedicineTranslator({
           )}
           {candidates?.status === "unavailable" && (
             <div className="reference-state">
-              <h4>Reference source unavailable</h4>
+              <h3>Reference source unavailable</h3>
               <p>
                 The lookup could not be completed. Try again later; do not rely
                 on this area for urgent decisions.
@@ -559,7 +559,7 @@ export function MedicineTranslator({
           >
             <span aria-hidden="true">← </span>Back to medicine match
           </button>
-          <h4>Choose how to explore</h4>
+          <h3>Choose how to explore</h3>
           <fieldset>
             <legend>Language</legend>
             <div className="segmented">
@@ -725,7 +725,7 @@ export function MedicineTranslator({
                             ? "AI translation"
                             : "Original labeling text"}
                       </span>
-                      <h4>{SECTION_TITLE[s.key][language]}</h4>
+                      <h3>{SECTION_TITLE[s.key][language]}</h3>
                     </div>
                     {s.summary ? (
                       <ul>
@@ -774,7 +774,7 @@ export function MedicineTranslator({
                 ))}
               </div>
               <div className="interaction-check">
-                <h4>General interactions are not a personalized check</h4>
+                <h3>General interactions are not a personalized check</h3>
                 <p>{info.interactions.personalized.reason}</p>
                 <span className="pill gray">
                   Personalized checker unavailable

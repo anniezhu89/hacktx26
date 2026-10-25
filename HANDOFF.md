@@ -1,6 +1,41 @@
 # LabelBridge v4 handoff
 
-Updated 2026-10-25. Nothing in this increment is committed.
+Updated 2026-10-25. The current status below supersedes the historical inventory later in this file.
+
+## Current increment
+
+Role: Integrator / frontend continuation.
+Branch and exact checkpoint SHA: `design/labelbridge-refresh`, `058e411cca8fb3574535bd5c6a9f16d716ef5c4d`.
+
+- All preexisting v4 implementation work is committed. Initial SHA `db3c5ff6c9f009d91d2e86e5a7f2c4a2c835998d` FAILED clean fixture validation because two fixtures were omitted from staging. Corrective SHA `058e411cca8fb3574535bd5c6a9f16d716ef5c4d` PASSED clean `npm ci`, `npm run check` (229 tests, 12 fixtures, production build), and the two foundation browser tests. The failure remains in the ledger and local reports.
+- Continuation files: `apps/web/src/App.tsx`, the Explanation/MedicineTranslator/Pharmacies/Savings/SharedSupport components, `apps/web/src/style.css`, `tests/e2e/workspaces.spec.ts`, this handoff, and `docs/verification.md`.
+- User-visible behavior: signup keeps the welcome/preferences screen after account creation. Previously `screen === "auth" && !me` removed AuthScreen as soon as signup populated the account. The browser reproduced the missing welcome screen before the fix.
+- The original walkthrough also used an exact Password selector that did not match the label containing password guidance. New tests match the actual accessible name and the actual "Saved fictional labels" heading.
+- Sign-in fields now receive the same control styling as other text fields. The auth grid can shrink at 320px with Largest text; before the fix its content widened the page to 342px.
+- Support sections now use h2 below the page h1 and h3 within sections, including the medicine translator. CSS selectors retain the presentation.
+- Contract changes requested or applied by continuation: none. The committed checkpoint contains v1.6, both app pins, lockfile, and the two contract-validated synthetic fixtures.
+- Commands run and actual outcomes: the pre-fix signup regression FAILED because the welcome screen disappeared. After correction, browser tests passed signup/preferences, saved-label confirmation, two-session invitation/selective sharing/revocation, settings at 320/360/430px and 844x390, and fixture source-dialog focus restoration. Photo-editor tests passed separately at 1440px and 390px after correcting their completion-message selector. Failures in earlier draft selectors were diagnosed; retries are disabled. The final combined suite is run by `commit:verified` and its actual result belongs to the exact SHA report.
+- Clean committed-SHA verification result: checkpoint PASS as above. For the continuation's exact SHA and command outcomes, use `git log -1 --format=%H` and `.verification/<SHA>.json`; never infer PASS from this handoff.
+- Independent review result: pending. Author inspection and automation are not independent review.
+- Provider mode used: fixture, synthetic data only. Medicine UI responses are explicitly intercepted browser fixtures; API provider adapters retain their unit coverage. No new live requests or clinical verification are claimed.
+- Known failures, missing access or assumptions: real-device camera/HEIC/EXIF/voices remain untested. Accounts and data are in memory only; recovery has no email provider; approval is an env allowlist; reopened labels have no local image preview; DailyMed reuse permission is unresolved; personalized interactions are unavailable. Full keyboard/screen-reader audit, 200% browser zoom, deployment, and independent review remain pending.
+- Next smallest integration step: independently review the committed v1.6 API/contracts and frontend changes, then perform the real-device checks. Do not merge a failed SHA or imply that these browser checks cover every planned product journey.
+
+## Reproduce current browser coverage
+
+```sh
+cd /Users/saramoore/hacktx26/.worktrees/design
+npm run check
+GEMINI_API_KEY= SERPAPI_API_KEY= LABELBRIDGE_REFERENCE_LOOKUPS=0 npm run smoke
+```
+
+The suite now includes 12 browser tests (two foundation plus ten workspace tests). Screenshots are saved under ignored `test-results/` for photo editing, sharing previews, supporter views, Largest-text settings, and the source explorer. Failure traces remain ignored. They contain synthetic data only.
+
+The root `dev` checkout and `agent/backend` worktree have not been merged or modified. Backend design-reference exports, ignored `.env` credentials, and any preexisting Microsoft directory are untouched.
+
+## Historical inventory from the pre-commit handoff
+
+The following describes the original v4 work and its earlier checks; unfinished browser/commit statuses below are historical, superseded by the current increment above.
 
 ## Where
 

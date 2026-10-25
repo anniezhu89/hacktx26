@@ -184,7 +184,7 @@ export function Savings({
 
   return (
     <section aria-labelledby="savings-heading" className="panel stack-sm">
-      <h3 id="savings-heading">Ways to save</h3>
+      <h2 id="savings-heading">Ways to save</h2>
       <p>
         Find savings programs and price information from cited sources. Prices
         are only shown with source evidence and are not guaranteed at your

@@ -67,7 +67,7 @@ export function Explanation({
 
   return (
     <section aria-labelledby="understand-heading" className="panel stack-sm">
-      <h3 id="understand-heading">Understand your directions</h3>
+      <h2 id="understand-heading">Understand your directions</h2>
       {!eligible ? (
         <p className="banner banner-blocked">
           Available after you confirm the medication name, strength, dosage
@@ -121,13 +121,13 @@ export function Explanation({
           ) : (
             <div className="side-by-side">
               <div>
-                <h4>Exactly as printed on your label</h4>
+                <h3>Exactly as printed on your label</h3>
                 <blockquote className="excerpt-text">
                   {data.originalDirections}
                 </blockquote>
               </div>
               <div>
-                <h4>In plain language</h4>
+                <h3>In plain language</h3>
                 {!data.eligibleForExplanation || !data.simplifiedText ? (
                   <p className="banner banner-blocked">
                     A plain-language version is not available for these
@@ -160,7 +160,7 @@ export function Explanation({
             and does not change your directions.
           </p>
 
-          <h4>Questions to ask your pharmacist</h4>
+          <h3>Questions to ask your pharmacist</h3>
           {data.unresolvedQuestions.length ? (
             <ul>
               {data.unresolvedQuestions.map((q) => (
@@ -171,7 +171,7 @@ export function Explanation({
             <p className="hint">No open questions were found.</p>
           )}
 
-          <h4>Reference material</h4>
+          <h3>Reference material</h3>
           {data.references.length ? (
             <ul className="stack-sm">
               {data.references.map((r) => (

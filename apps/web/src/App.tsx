@@ -554,7 +554,7 @@ export function App() {
         {announcement}
       </p>
 
-      {screen === "auth" && !me ? (
+      {screen === "auth" ? (
         <AuthScreen
           account={account}
           onDone={afterSignIn}

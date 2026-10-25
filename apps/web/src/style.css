@@ -134,6 +134,8 @@ button:disabled {
 input[type="text"],
 input[type="search"],
 input[type="number"],
+input[type="email"],
+input[type="password"],
 input:not([type]),
 select,
 textarea {
@@ -1071,7 +1073,7 @@ button.danger:hover:not(:disabled) {
 .support-section > .panel > * + * {
   margin-top: 0.9rem;
 }
-.support-section h3 {
+.support-section h2 {
   font-size: 1.45rem;
 }
 .persona-pane {
@@ -1612,6 +1614,7 @@ html.largest-text {
 .auth-shell {
   min-height: 70vh;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   padding: 2.2rem 1rem;
   background: linear-gradient(
@@ -1870,7 +1873,7 @@ html.largest-text {
 .medicine-info > * + * {
   margin-top: 0.9rem;
 }
-.medicine-info > h3 {
+.medicine-info > h2 {
   font-size: 1.6rem;
 }
 .medicine-identity {
