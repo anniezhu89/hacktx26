@@ -1,0 +1,15 @@
+{
+  "name": "labelbridge",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @labelbridge/web",
+    "check": "npm run build -w @labelbridge/web"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
