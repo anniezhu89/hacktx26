@@ -1056,4 +1056,4 @@ export type MedicineSource = z.infer<typeof medicineSource>;
 export type SourcePassage = z.infer<typeof sourcePassage>;
 
 // v1.7: isolated additive community board contracts.
-export * from "./community";
+export * from "./community.ts";
