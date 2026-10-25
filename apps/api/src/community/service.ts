@@ -192,7 +192,7 @@ export class CommunityService {
       listing,
       ...distance,
       section:
-        inWindow === null && distance.section !== "online"
+        inWindow === null && distance.section === "nearby"
           ? "date_unverified"
           : distance.section,
       matchReasons: [

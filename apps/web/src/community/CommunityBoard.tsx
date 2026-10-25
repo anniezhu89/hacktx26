@@ -688,8 +688,9 @@ export function CommunityBoard({
       )}
       <p className="hint">
         “Confirmed” dates mean supported by retrieved evidence, not organizer
-        verification or confirmed attendance. Demo saves and defaults are kept
-        in memory for up to seven days and disappear on server restart.
+        verification or confirmed attendance. Demo saves expire after seven
+        days. Profile defaults follow account retention. All demo state
+        disappears on server restart.
       </p>
     </main>
   );

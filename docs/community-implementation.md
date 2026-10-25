@@ -36,3 +36,5 @@ Acceptance gaps / handoff:
 - No database migration applies to the existing in-memory architecture. Accounts, community saves/defaults and caches disappear on server restart; retention is at most seven days for user relations/listings. Do not treat demo authentication or storage as production infrastructure.
 - Full screen-reader, real-device and browser-zoom audits, deployment and deployed-SHA verification were not performed.
 - Community is disabled by default; enable explicitly per README. Existing untracked .env and the already-running primary server were preserved. Restarting the primary server clears its demo state.
+
+UI SHA `aa64eefae4406e7f9b31afdc4fdc6da7045525af`: PASS clean npm ci, complete check (277 tests, fixtures, production build), all 23 Chromium tests. The final follow-up clarifies the account-vs-community retention wording and makes section precedence explicit: an unresolved physical location always stays in Distance not verified, even if its date is also uncertain. A dedicated regression verifies both uncertainties remain visible. Independent review and live OpenCage access are still pending; no merge, push or deployment occurred.

@@ -533,6 +533,20 @@ describe("community geographic adapter and public cache", () => {
     expect(free.items).toHaveLength(1);
     expect(free.items[0].listing.costAmount).toBe(0);
   });
+  it("keeps missing coordinates in Distance not verified even when dates are uncertain", () => {
+    const service = new CommunityService(communityConfig({}), () => now);
+    const l = normalize(
+      candidate({ date: { when: "Oct 28" }, address: undefined }),
+      now,
+      "live",
+      null,
+    )!;
+    expect(service.view(l, filters, null)).toMatchObject({
+      section: "distance_unverified",
+      distanceMiles: null,
+      listing: { dateStatus: "incomplete", startAt: null },
+    });
+  });
   it("coalesces identical live searches and shares no identity/distance in cache", async () => {
     const f = vi.fn<typeof fetch>().mockImplementation(async () => {
       await new Promise((r) => setTimeout(r, 5));
