@@ -111,6 +111,21 @@ export const productAttributes = z
     location: z.string().nullable(),
   })
   .strict();
+// Deliberately coarse. The search provider is a third party, so the only
+// location it may receive is a ZIP code or a place name: never a street
+// address, and never anything read off the label. An allowlist is used rather
+// than a denylist of street patterns, so an unanticipated format is rejected
+// instead of forwarded.
+const placeName = /^[\p{L} .'-]{2,60}(,\s*\p{L}{2,})?$/u;
+export const coarseLocation = z
+  .string()
+  .trim()
+  .min(2)
+  .max(60)
+  .refine(
+    (v) => /^\d{5}$/.test(v) || placeName.test(v),
+    "Use a 5-digit ZIP code or a place name, not a street address",
+  );
 export const savingsOption = z
   .object({
     id,
@@ -211,7 +226,13 @@ export const fieldsRequest = expectedRevision.extend({
     .min(1),
 });
 export const savingsRequest = expectedRevision.extend({
-  location: z.string().min(1).max(100),
+  // v1.5: optional and coarse. The programs search deliberately sends no
+  // location at all: adding one measurably degraded results (generic
+  // manufacturer portals displaced the drug's own programs), and it is extra
+  // data for a third party to no benefit. Kept in the contract because a
+  // later price search needs it, and coarse for the same reason the pharmacy
+  // lookup is, so a street address can never be forwarded.
+  location: coarseLocation.optional(),
   copay: z.number().nonnegative().optional(),
 });
 export const reviewCreateRequest = expectedRevision.extend({
@@ -304,9 +325,31 @@ export const healthResponse = envelope(
 );
 export const caseResponse = envelope(caseSchema);
 export const explanationResponse = envelope(explanation);
-export const savingsResponse = envelope(
-  z.object({ options: z.array(savingsOption) }).strict(),
-);
+// v1.5: a bare option list could not distinguish "nothing was found" from
+// "we could not tell which medication this is", and those need different
+// answers. A search engine will answer an invented drug name with a real
+// different drug's results, so the second state is not hypothetical.
+export const savingsLookup = z
+  .object({
+    /** The generic actually searched for, or null when none was identified. */
+    product: z.string().min(1).nullable(),
+    sourceTitle: z.string().min(1),
+    retrievedAt: timestamp,
+    status: z.enum(["ok", "no_results", "product_not_identified"]),
+    options: z.array(savingsOption),
+    notes: z.array(z.string()),
+  })
+  .strict()
+  .refine(
+    (s) => (s.status === "ok" ? s.options.length > 0 : s.options.length === 0),
+    "Options are only valid with status ok",
+  )
+  .refine(
+    (s) => (s.status === "product_not_identified") === (s.product === null),
+    "product is null exactly when the medication was not identified",
+  );
+export const savingsResponse = envelope(savingsLookup);
+export type SavingsLookup = z.infer<typeof savingsLookup>;
 export const reviewResponse = envelope(reviewRequest);
 export const reviewsResponse = envelope(z.array(reviewRequest));
 // v1.1 routes (additive; wire contractVersion stays "1"):
@@ -366,21 +409,6 @@ export const sessionResponse = envelope(
 //   POST /api/cases/:id/pharmacies   patient   pharmacySearchRequest
 //                                              → pharmaciesResponse
 //
-// Deliberately coarse. The search provider is a third party, so the only
-// location it may receive is a ZIP code or a place name: never a street
-// address, and never anything read off the label. An allowlist is used rather
-// than a denylist of street patterns, so an unanticipated format is rejected
-// instead of forwarded.
-const placeName = /^[\p{L} .'-]{2,60}(,\s*\p{L}{2,})?$/u;
-export const coarseLocation = z
-  .string()
-  .trim()
-  .min(2)
-  .max(60)
-  .refine(
-    (v) => /^\d{5}$/.test(v) || placeName.test(v),
-    "Use a 5-digit ZIP code or a place name, not a street address",
-  );
 export const pharmacy = z
   .object({
     id,

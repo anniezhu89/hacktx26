@@ -129,7 +129,6 @@ export function Savings({
   /** Owned by the review screen so the support plan can use chosen options. */
   result: SavingsResult;
 }) {
-  const [location, setLocation] = useState("");
   const [copay, setCopay] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const eligible = eligibleForExplanation(caseData.fields);
@@ -140,8 +139,6 @@ export function Savings({
   function submit(event: FormEvent) {
     event.preventDefault();
     const found: string[] = [];
-    const place = location.trim();
-    if (!place) found.push("Enter a city or ZIP code.");
     const copayValue = copay.trim() === "" ? undefined : Number(copay);
     if (
       copayValue !== undefined &&
@@ -156,7 +153,7 @@ export function Savings({
           caseData.id,
           {
             expectedRevision: caseData.revision,
-            location: place,
+            // No location is sent: the programs search does not use one.
             ...(copayValue !== undefined ? { copay: copayValue } : {}),
           },
           signal,
@@ -169,7 +166,8 @@ export function Savings({
     );
   }
 
-  const options = result.data?.options ?? null;
+  const lookup = result.data;
+  const options = lookup?.options ?? null;
 
   return (
     <section aria-labelledby="savings-heading" className="panel stack-sm">
@@ -192,23 +190,6 @@ export function Savings({
               savings programs can still be shown.
             </p>
           )}
-          <div className="stack-sm">
-            <label htmlFor="savings-location" className="field-label">
-              City or ZIP code
-            </label>
-            <input
-              id="savings-location"
-              type="text"
-              maxLength={100}
-              autoComplete="off"
-              value={location}
-              aria-describedby="savings-location-hint"
-              onChange={(e) => setLocation(e.target.value)}
-            />
-            <p id="savings-location-hint" className="hint">
-              Do not enter a street address.
-            </p>
-          </div>
           <div className="stack-sm">
             <label htmlFor="savings-copay" className="field-label">
               Your copay in US dollars (optional)
@@ -248,30 +229,47 @@ export function Savings({
       )}
       <div aria-live="polite">
         {result.pending && <p className="hint">Searching sources…</p>}
-        {options && options.length === 0 && (
+        {lookup?.status === "product_not_identified" && (
+          <p className="banner banner-blocked">
+            This medication could not be identified, so nothing was looked up.
+            Searching a name we do not recognise returns results for a different
+            medication, which would be worse than showing nothing. Ask your
+            pharmacist about savings programs instead.
+          </p>
+        )}
+        {lookup?.status === "no_results" && (
           <p>
-            No savings resources were found for this search. Try a nearby city,
-            or ask your pharmacist about discount programs.
+            No savings programs from a recognised source mentioned this
+            medication. Ask your pharmacist about discount programs.
           </p>
         )}
       </div>
-      {result.error?.error.code === "NOT_IMPLEMENTED" ? (
+      {result.error?.error.code === "PROVIDER_UNAVAILABLE" ? (
         <p className="banner banner-info">
-          Savings search is not available on this server yet.
+          Savings search is unavailable on this server, so nothing is shown.
+          Nothing was guessed.
         </p>
       ) : (
         result.error && (
           <ErrorBanner error={result.error} retrying={result.pending} />
         )
       )}
-      {options && result.dataMode && (
+      {lookup && result.dataMode && (
         <p className="badge">{DATA_MODE_TEXT[result.dataMode]}</p>
+      )}
+      {lookup && lookup.notes.length > 0 && (
+        <ul>
+          {lookup.notes.map((note) => (
+            <li key={note} className="hint">
+              {note}
+            </li>
+          ))}
+        </ul>
       )}
       {options && options.length > 0 && (
         <>
-          <p className="hint">
-            Results are listed in the order the sources returned them, not
-            ranked by price.
+          <p className="meta">
+            {lookup?.sourceTitle} · Searched for {lookup?.product}
           </p>
           <ul className="review-list" aria-label="Savings results">
             {options.map((o) => (

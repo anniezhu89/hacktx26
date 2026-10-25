@@ -16,6 +16,7 @@ import {
   pharmaciesResponse,
   pharmacyLookup,
   pharmacySearchRequest,
+  savingsLookup,
   savingsOption,
   savingsRequest,
   savingsResponse,
@@ -622,7 +623,10 @@ export function createMockClient({
       return respond(signal, savingsResponse, () => {
         const parsed = savingsRequest.safeParse(body);
         if (!parsed.success)
-          throw mockError("BAD_REQUEST", "Enter a city or ZIP code.");
+          throw mockError(
+            "BAD_REQUEST",
+            "Enter a ZIP code or city, not a street address.",
+          );
         requireCurrentRevision(caseId, {
           expectedRevision: parsed.data.expectedRevision,
         });
@@ -630,7 +634,20 @@ export function createMockClient({
           savingsOption.parse(o),
         );
         pendingSavings = null;
-        return { options };
+        // The offline client has no search provider, so it answers with the
+        // fictional fixture rather than looking anything up.
+        return savingsLookup.parse({
+          // Always named: the fixture stands in for an identified
+          // medication, so "no results" never masquerades as "not identified".
+          product: "fixture medication",
+          sourceTitle: "Built-in fixture, not a live search",
+          retrievedAt: new Date(now()).toISOString(),
+          status: options.length ? "ok" : "no_results",
+          options,
+          notes: [
+            "Fixture data: no savings search was run and no prices are shown.",
+          ],
+        });
       });
     },
     findPharmacies(caseId, body, signal) {

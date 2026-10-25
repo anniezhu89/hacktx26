@@ -66,3 +66,17 @@ Rules that live in the contract, not only in the adapter:
 - `status: "location_not_recognised"` exists because the provider answers an unusable location with a successful-looking list of pharmacies in unrelated states (see `docs/verification.md`). Treat it as a distinct state; `results` must be empty unless `status` is `"ok"`.
 - `hoursText` is verbatim source text. Do not parse it into an "open now" badge: the data goes stale and sending someone to a closed pharmacy is a real harm.
 - `providers.search: "live"` means only that the search adapter is configured. `savings-search` is still unimplemented and returns `NOT_IMPLEMENTED`; do not read the health flag as a claim about it.
+
+## Contract v1.5 (savings search, first increment)
+
+`@labelbridge/contracts` 1.5.0. Wire `contractVersion` stays `"1"`.
+
+**One breaking change, to a route that was never implemented.** `savingsResponse` data went from `{ options }` to `savingsLookup`: `product`, `sourceTitle`, `retrievedAt`, `status` (`ok` | `no_results` | `product_not_identified`), `options`, `notes`. `POST /api/cases/:id/savings-search` previously returned `NOT_IMPLEMENTED`, so nothing live was reading the old shape. The mock client and `Savings.tsx` are updated in the same commit.
+
+- `status: "product_not_identified"` is the important one. A search engine answers an invented medication name with a _real different medication's_ results and prices (see `docs/verification.md`), so "we could not identify this" must be distinguishable from "we found nothing". Invariants: `options` is empty unless `status` is `"ok"`, and `product` is null exactly when the status is `product_not_identified`.
+- `savingsRequest.location` is now **optional** and typed `coarseLocation`. The programs search sends no location: a spike showed adding one made results measurably worse, and it is extra data for a third party to no benefit. The UI no longer asks for one. It stays in the contract for a later price search. `copay` is accepted and currently unused.
+- Amounts: every option this increment produces has `amount: null`, `currency: null`, `priceBasis: "unknown"`. `matchedProduct` claims only the generic name and leaves strength, form and quantity null. The existing `priceView`/`productMatch` helpers in `apps/web/src/lib/understand.ts` are unchanged and still enforce the rules for any future priced option.
+- The identity allowlist lives in `apps/api/src/providers/generic-drugs.ts`. It is a seed list of ~30 generics with brand aliases, deliberately not a drug database. Add entries there rather than loosening the match: whole-word matching is what stops "LEVOTHIX" resolving to levothyroxine.
+- Only a `user_confirmed` medication name is searched. Do not relax this to an AI-read value.
+
+**Next increment, agreed and not yet done:** switch the demo sample labels from the invented "Fictional Demo Tablet" / "LEVOTHIX" to a real generic (levothyroxine, which is realistically printed both as mcg and as a decimal mg, preserving the existing decimal and mcg/mg safety fixtures). This touches `apps/web/src/samples.ts`, `apps/web/public/samples/*.svg`, `fixtures/{clear,unreadable,ambiguous,review-submitted}.json`, `scripts/make-sample-labels.mjs` with regenerated `fixtures/labels/*.png`, and the string assertions in `tests/unit/api/{cases,extract,gemini,serpapi}.test.ts`. Until then the demo's own savings path returns `product_not_identified`, which is correct behaviour but shows nothing positive.

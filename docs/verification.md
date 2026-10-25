@@ -187,3 +187,40 @@ Known gaps and limitations: the result list is the source's own relevance order,
 | SHA                                        | Clean verification | Note                                                                                                                                                                                                                                                                                      |
 | ------------------------------------------ | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `74bdaad417b9bf33ea2844f73c1ff37c7e814ed2` | **PASS**           | `npm run check` (150 tests) plus the Playwright smoke suite (2 tests) in the clean detached worktree. The 1.3.0 lesson was applied up front: the contracts bump, both app pins and the lockfile moved to 1.4.0 in this one commit, and the lockfile diff is the three version lines only. |
+
+## Savings search, first increment: programs and resources (B4, backend, contract and frontend)
+
+Date: 2026-10-24. Spike scripts were run outside the repository; raw probes are not committed.
+
+Capability findings, from actual requests with the configured credential:
+
+| Probe                                                           | Result                                                                                                                                                                                                |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `levothyroxine 50 mcg tablet 30 count price`                    | Five sources, five different numbers: $4.00, $9.00, $10.82, $13.50 and "around $1x", across different pharmacies, discount programs and conditions. A snippet number is not an attributable price.    |
+| `LEVOTHIX 0.5 mg tablet price` (an **invented** medication)     | **HTTP 200 with five results about levothyroxine, carrying real prices ($4.00, $23.79, $155.61).** The engine fuzzy-matched a nonexistent drug to a real one and answered confidently.                |
+| `levothyroxine prescription savings program patient assistance` | Manufacturer and assistance programs with stated conditions (Synthroid, Tirosint, Unithroid, Medicare Extra Help). Quotable, and the right shape for `optionType: "program"`.                         |
+| The same query plus a ZIP code                                  | **Worse**: generic manufacturer portals (AstraZeneca "Affordability", "Pfizer for All", AbbVie "Patient Assistance") displaced the drug's own programs, and four of six results named no drug at all. |
+
+The second row is the third instance in this project of the same failure shape, after Meta silently discarding images and the Maps engine answering an unusable location with pharmacies in three states: a confident, well-formed, wrong answer rather than an error.
+
+Design consequences, all of which are enforced in code:
+
+- **Identity gate before any search.** `apps/api/src/providers/generic-drugs.ts` holds a seed allowlist of generic names with brand aliases. An unlisted or invented name returns `product_not_identified` and **no search is spent**. Only a `user_confirmed` medication name is ever searched; an unreviewed AI reading is not enough, because a wrong name returns real programs for a medication the patient is not taking.
+- **No amounts at all in this increment.** Every option is `amount: null`, `currency: null`, `priceBasis: "unknown"`, with the source's snippet kept verbatim as `sourceEvidence`. This is the plan's own fallback: "If live price evidence is poor, show sourced savings resources rather than invented prices."
+- **Only the generic is claimed to match.** `matchedProduct` carries the generic and leaves strength, form and quantity null, because the source did not state them for that result. Guessing them is what would make a price dangerous.
+- **Result and host filtering.** A result must mention the identified generic in its title or snippet, and come from an allowlisted host. Nothing is ever fetched, only linked. `ai_overview` is ignored: it is generated text, not a source.
+- **No location is sent.** The query is the generic name plus fixed program wording. `savingsRequest.location` became optional and `coarseLocation`-typed; the UI no longer asks for a location in this increment, since asking for data that is not used would be misleading.
+- Deterministic throughout: no model is involved anywhere in the savings path.
+
+Contract v1.5 (breaking for one unimplemented route): `savingsResponse` data changed from `{ options }` to `savingsLookup` (`product`, `sourceTitle`, `retrievedAt`, `status`, `options`, `notes`), because an empty list could not distinguish "nothing found" from "we could not tell which medication this is". Invariants: options only with `status: "ok"`, and `product === null` exactly when `status === "product_not_identified"`. `savingsRequest.location` is now optional and `coarseLocation`. `coarseLocation` moved earlier in the module so `savingsRequest` can use it. The route previously returned `NOT_IMPLEMENTED`, so no live client depended on the old shape.
+
+Automated checks: `npm run check` PASS — 176 tests, 26 new in `tests/unit/api/savings.test.ts`, all against a stubbed fetch with no live calls. They encode the invented-name case and assert it is refused without a search.
+
+Live evidence, against the built server with real credentials:
+
+- Confirmed medication `LEVOTHIX` → HTTP 200, `status: product_not_identified`, `product: null`, zero options, `dataMode: fixture`, and the stubbed fetch counter confirms **no search was spent**.
+- Confirmed medication `Levothyroxine` → `dataMode: live`, `status: ok`, `product: "levothyroxine"`, three options from `synthroidpro.com`, `unithroid.com` and `goodrx.com`, every one with `amount: null` and `priceBasis: "unknown"`, and a note that six results not mentioning levothyroxine were set aside.
+- A medication name that is present but not `user_confirmed` → `product_not_identified`, no search spent.
+- Request logs contain route, status, latency and provider mode only; a scan for the medication names and the returned source names found zero occurrences.
+
+Known gaps and limitations: **the built-in demo samples still use the invented name "Fictional Demo Tablet", so the demo's own savings path currently returns `product_not_identified`.** Switching the samples to a real generic is the agreed next increment and is required before this feature demonstrates anything positive. The allowlist is a 30-entry seed, not a drug database, so most real medications will be refused; that is the intended trade, but it means coverage is low. Host allowlisting means a legitimate program on an unlisted site is dropped silently apart from the count in `notes`. No price, copay comparison or eligibility determination exists yet; `copay` is accepted by the contract and currently unused. The changed Savings UI has **not** been exercised in a browser in this increment. No independent review of this change has been done.

@@ -14,6 +14,8 @@ import {
   intakeRequest,
   pharmaciesResponse,
   pharmacySearchRequest,
+  savingsRequest,
+  savingsResponse,
   sessionResponse,
   type Case,
 } from "@labelbridge/contracts";
@@ -33,6 +35,12 @@ import {
   findPharmacies,
   type SerpApiConfig,
 } from "./providers/serpapi";
+import {
+  SavingsCache,
+  findSavings,
+  identifyFor,
+  notIdentified,
+} from "./providers/savings";
 import {
   SessionStore,
   loadSession,
@@ -59,7 +67,12 @@ export type AppOptions = {
   log?: (entry: LogEntry) => void;
   cases?: CaseStore;
   sessions?: SessionStore;
-  limits?: { api?: RateLimit; intake?: RateLimit; pharmacies?: RateLimit };
+  limits?: {
+    api?: RateLimit;
+    intake?: RateLimit;
+    pharmacies?: RateLimit;
+    savings?: RateLimit;
+  };
   /** Null keeps image intake in explicit fixture mode. */
   extraction?: GeminiConfig | null;
   /** Null keeps the pharmacy lookup in explicit fixture mode. */
@@ -89,7 +102,6 @@ function send<T>(
 }
 
 const pendingRoutes: [string, string][] = [
-  ["post", "/api/cases/:id/savings-search"],
   ["post", "/api/cases/:id/reviews"],
   ["get", "/api/reviews"],
   ["post", "/api/reviews/:id/claim"],
@@ -112,6 +124,7 @@ export function createApp(
   const extraction = options.extraction ?? null;
   const search = options.search ?? null;
   const pharmacyCache = new PharmacyCache(now);
+  const savingsCache = new SavingsCache(now);
   const app = express();
   app.disable("x-powered-by");
 
@@ -163,8 +176,8 @@ export function createApp(
           providers: {
             extraction: extraction ? "live" : "fixture",
             explanation: "fixture",
-            // Configured, not proven: this reports the pharmacy lookup only.
-            // savings-search is still unimplemented either way.
+            // Configured, not proven: it says a search adapter has a key,
+            // not that any particular lookup will succeed.
             search: search ? "live" : "fixture",
           },
         },
@@ -338,6 +351,58 @@ export function createApp(
       );
     send(res, explanationResponse, buildExplanation(record.case));
   });
+
+  api.post(
+    "/cases/:id/savings-search",
+    rateLimit(
+      "savings",
+      options.limits?.savings ?? { limit: 12, windowMs: 10 * 60_000 },
+      now,
+    ),
+    async (req, res) => {
+      const record = ownedCase(res, String(req.params.id));
+      const input = parseBody(savingsRequest, req.body);
+      if (input.expectedRevision !== record.case.revision)
+        throw new ApiError(
+          "REVISION_CONFLICT",
+          "The case changed since it was loaded. Reload and review again.",
+        );
+      // Only a confirmed name is searched. An unreviewed AI reading could be
+      // wrong, and a search for the wrong medication returns real, plausible
+      // programmes for a medication the patient is not taking.
+      const name = record.case.fields.find(
+        (f) => f.key === "medicationName" && f.reviewState === "user_confirmed",
+      )?.value;
+      const generic = identifyFor(name ?? null);
+      // Not identified is an answer, not an error: no search is spent.
+      if (!generic) return send(res, savingsResponse, notIdentified(now));
+      if (!search)
+        throw new ApiError(
+          "PROVIDER_UNAVAILABLE",
+          "Savings search is not configured, so no programs can be listed.",
+        );
+      const cached = savingsCache.get(generic);
+      if (cached) {
+        res.locals.dataMode = "cached";
+        return send(res, savingsResponse, cached);
+      }
+      const lookup = await findSavings(search, generic, {
+        fetchImpl: options.fetchImpl,
+        now,
+        onError: (message) => {
+          res.locals.providerError = message;
+        },
+      });
+      if (!lookup)
+        throw new ApiError(
+          "PROVIDER_UNAVAILABLE",
+          "The savings search provider is unavailable. Try again shortly.",
+        );
+      savingsCache.set(generic, lookup);
+      res.locals.dataMode = "live";
+      send(res, savingsResponse, lookup);
+    },
+  );
 
   api.post(
     "/cases/:id/pharmacies",
